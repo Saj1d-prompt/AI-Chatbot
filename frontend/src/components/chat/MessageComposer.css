@@ -1,0 +1,168 @@
+.composer-wrapper {
+  width: 100%;
+
+  padding: 0 24px 18px;
+
+  flex-shrink: 0;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(11, 13, 16, 0),
+      #0b0d10 32%
+    );
+}
+
+.message-composer {
+  width: min(780px, 100%);
+
+  margin: 0 auto;
+
+  padding: 9px;
+
+  border: 1px solid #2b3036;
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.025),
+      transparent
+    ),
+    #14171b;
+
+  box-shadow:
+    0 16px 45px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(255, 255, 255, 0.015);
+}
+
+.message-composer:focus-within {
+  border-color: #3a4148;
+
+  box-shadow:
+    0 16px 45px rgba(0, 0, 0, 0.24),
+    0 0 0 3px rgba(113, 255, 181, 0.025);
+}
+
+.message-composer textarea {
+  display: block;
+
+  width: 100%;
+  min-height: 48px;
+  max-height: 180px;
+
+  resize: none;
+
+  padding: 10px 11px 6px;
+
+  border: 0;
+  outline: none;
+
+  background: transparent;
+
+  color: var(--text-primary);
+
+  font-family: inherit;
+  font-size: 14px;
+
+  line-height: 1.55;
+}
+
+.message-composer textarea::placeholder {
+  color: #666d75;
+}
+
+.composer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 2px 2px 1px;
+}
+
+.composer-tools {
+  display: flex;
+  align-items: center;
+
+  gap: 3px;
+}
+
+.composer-tool-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 34px;
+  height: 34px;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 9px;
+
+  background: transparent;
+
+  color: #717880;
+}
+
+.composer-tool-button:hover {
+  background: var(--surface-hover);
+  color: #aeb4bb;
+}
+
+.composer-send-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 36px;
+  height: 36px;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 10px;
+
+  background: var(--signal);
+
+  color: #07110d;
+
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.composer-send-button:not(:disabled):hover {
+  transform: translateY(-1px);
+
+  box-shadow: 0 5px 20px rgba(113, 255, 181, 0.16);
+}
+
+.composer-send-button:disabled {
+  background: #252a2f;
+
+  color: #626970;
+
+  cursor: default;
+}
+
+.composer-disclaimer {
+  margin: 8px auto 0;
+
+  color: #535960;
+
+  font-size: 9px;
+
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .composer-wrapper {
+    padding: 0 12px 11px;
+  }
+
+  .message-composer {
+    border-radius: 15px;
+  }
+}

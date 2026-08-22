@@ -1,0 +1,145 @@
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  height: 66px;
+
+  padding: 0 22px;
+
+  flex-shrink: 0;
+
+  border-bottom: 1px solid var(--border-color);
+
+  background: rgba(11, 13, 16, 0.82);
+
+  backdrop-filter: blur(18px);
+}
+
+.chat-header-left,
+.chat-header-right {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+}
+
+.mobile-menu-button,
+.header-action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 36px;
+  height: 36px;
+
+  padding: 0;
+
+  border: 1px solid transparent;
+  border-radius: 9px;
+
+  background: transparent;
+
+  color: var(--text-secondary);
+}
+
+.mobile-menu-button:hover,
+.header-action-button:hover {
+  border-color: var(--border-color);
+  background: var(--surface-hover);
+
+  color: var(--text-primary);
+}
+
+.mobile-menu-button {
+  display: none;
+}
+
+.assistant-selector {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 5px 8px;
+
+  border: 0;
+  border-radius: 9px;
+
+  background: transparent;
+
+  color: var(--text-primary);
+
+  text-align: left;
+}
+
+.assistant-selector:hover {
+  background: var(--surface-hover);
+}
+
+.assistant-selector > div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+.assistant-name {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.assistant-model {
+  color: var(--text-tertiary);
+
+  font-size: 9px;
+
+  letter-spacing: 0.04em;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+
+  padding: 6px 9px;
+
+  border: 1px solid #20252a;
+  border-radius: 100px;
+
+  background: #101317;
+
+  color: #828a93;
+
+  font-size: 10px;
+}
+
+.connection-dot {
+  width: 6px;
+  height: 6px;
+
+  border-radius: 50%;
+
+  background: var(--signal);
+
+  box-shadow: 0 0 8px rgba(113, 255, 181, 0.5);
+}
+
+@media (max-width: 850px) {
+  .mobile-menu-button {
+    display: flex;
+  }
+}
+
+@media (max-width: 560px) {
+  .chat-header {
+    height: 60px;
+
+    padding: 0 12px;
+  }
+
+  .connection-status {
+    display: none;
+  }
+}

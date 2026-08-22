@@ -1,122 +1,92 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from "react";
+
+import Sidebar from "./components/layout/Sidebar";
+import ChatHeader from "./components/chat/ChatHeader";
+import EmptyState from "./components/chat/EmptyState";
+import MessageComposer from "./components/chat/MessageComposer";
+
+import "./App.css";
+
+const starterPrompts = [
+  {
+    title: "Explain something",
+    prompt: "Explain REST APIs in simple terms.",
+  },
+  {
+    title: "Help me code",
+    prompt: "Help me build a reusable Laravel service class.",
+  },
+  {
+    title: "Brainstorm",
+    prompt: "Give me ideas for a professional SaaS project.",
+  },
+  {
+    title: "Improve writing",
+    prompt: "Help me improve a professional project description.",
+  },
+];
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const handleSuggestionSelect = (prompt) => {
+    setDraft(prompt);
+  };
+
+  const handleNewChat = () => {
+    setDraft("");
+    setSidebarOpen(false);
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+
+    if (!draft.trim()) {
+      return;
+    }
+
+    /*
+     * The Laravel API connection will be added in the next step.
+     * For now, we only verify the composer UI and input behavior.
+     */
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
+    <div className="chat-app">
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        onNewChat={handleNewChat}
+      />
+
+      {sidebarOpen && (
         <button
+          className="sidebar-overlay"
           type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
+          aria-label="Close sidebar"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <section className="chat-workspace">
+        <ChatHeader onMenuClick={() => setSidebarOpen(true)} />
+
+        <main className="chat-content">
+          <EmptyState
+            suggestions={starterPrompts}
+            onSuggestionSelect={handleSuggestionSelect}
+          />
+        </main>
+
+        <MessageComposer
+          value={draft}
+          onChange={setDraft}
+          onSubmit={handleSubmit}
+        />
       </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    </div>
+  );
 }
 
-export default App
+export default App;

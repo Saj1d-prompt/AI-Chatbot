@@ -1,0 +1,234 @@
+.empty-state {
+  width: 100%;
+  max-width: 780px;
+
+  margin: auto;
+  padding: 46px 24px 36px;
+
+  animation: emptyStateEnter 500ms ease both;
+}
+
+.empty-brand {
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  margin-bottom: 32px;
+}
+
+.empty-brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 38px;
+  height: 38px;
+
+  border: 1px solid rgba(113, 255, 181, 0.28);
+  border-radius: 12px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(113, 255, 181, 0.16),
+      rgba(113, 255, 181, 0.03)
+    );
+
+  color: var(--signal);
+
+  box-shadow: 0 0 30px rgba(113, 255, 181, 0.05);
+}
+
+.empty-brand-mark span {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.empty-brand-line {
+  width: 54px;
+  height: 1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(113, 255, 181, 0.4),
+      transparent
+    );
+}
+
+.empty-heading {
+  max-width: 650px;
+}
+
+.empty-eyebrow {
+  margin: 0 0 13px;
+
+  color: #687078;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  letter-spacing: 0.16em;
+}
+
+.empty-heading h1 {
+  margin: 0;
+
+  color: var(--text-primary);
+
+  font-size: clamp(38px, 5vw, 58px);
+  font-weight: 550;
+
+  letter-spacing: -0.055em;
+
+  line-height: 1.02;
+}
+
+.empty-heading h1 span {
+  color: #747b83;
+}
+
+.empty-heading > p:last-child {
+  max-width: 540px;
+
+  margin: 20px 0 0;
+
+  color: var(--text-tertiary);
+
+  font-size: 14px;
+
+  line-height: 1.7;
+}
+
+.suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  gap: 10px;
+
+  margin-top: 38px;
+}
+
+.suggestion-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  min-height: 132px;
+
+  padding: 15px;
+
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.018),
+      transparent
+    ),
+    #101216;
+
+  color: inherit;
+
+  text-align: left;
+
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
+}
+
+.suggestion-card:hover {
+  transform: translateY(-2px);
+
+  border-color: #30353b;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(113, 255, 181, 0.035),
+      transparent 55%
+    ),
+    #121519;
+}
+
+.suggestion-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.suggestion-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 30px;
+  height: 30px;
+
+  border: 1px solid #272c31;
+  border-radius: 8px;
+
+  background: #171a1f;
+
+  color: #9198a0;
+}
+
+.suggestion-arrow {
+  color: #555c64;
+
+  transition:
+    transform 180ms ease,
+    color 180ms ease;
+}
+
+.suggestion-card:hover .suggestion-arrow {
+  transform: translate(2px, -2px);
+
+  color: var(--signal);
+}
+
+.suggestion-title {
+  color: #d8dadd;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.suggestion-card p {
+  margin: 5px 0 0;
+
+  color: #737a82;
+
+  font-size: 11px;
+
+  line-height: 1.45;
+}
+
+@keyframes emptyStateEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .empty-state {
+    padding: 40px 18px 30px;
+  }
+
+  .suggestion-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .suggestion-card {
+    min-height: 105px;
+  }
+}
