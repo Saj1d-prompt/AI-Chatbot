@@ -125,7 +125,6 @@
 
   box-shadow: 0 0 8px rgba(113, 255, 181, 0.5);
 }
-
 @media (max-width: 850px) {
   .mobile-menu-button {
     display: flex;
