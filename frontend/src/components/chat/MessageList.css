@@ -79,18 +79,19 @@
 }
 
 .message-content {
+  min-width: 0;
+
   color: #d6d9dc;
 
   font-size: 14px;
 
   line-height: 1.72;
 
-  white-space: pre-wrap;
-
   overflow-wrap: anywhere;
 }
 
 .chat-message-user .message-content {
+  white-space: pre-wrap;  
   color: #eef0f2;
 }
 

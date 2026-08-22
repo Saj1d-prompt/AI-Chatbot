@@ -1,0 +1,288 @@
+.markdown-message {
+  color: #d6d9dc;
+
+  font-size: 14px;
+  line-height: 1.75;
+
+  overflow-wrap: anywhere;
+}
+
+/* =========================================
+   PARAGRAPHS
+========================================= */
+
+.markdown-message p {
+  margin: 0 0 14px;
+}
+
+.markdown-message p:last-child {
+  margin-bottom: 0;
+}
+
+/* =========================================
+   HEADINGS
+========================================= */
+
+.markdown-message h1,
+.markdown-message h2,
+.markdown-message h3,
+.markdown-message h4,
+.markdown-message h5,
+.markdown-message h6 {
+  margin: 24px 0 12px;
+
+  color: var(--text-primary);
+
+  font-weight: 650;
+  line-height: 1.3;
+
+  letter-spacing: -0.02em;
+}
+
+.markdown-message h1 {
+  font-size: 24px;
+}
+
+.markdown-message h2 {
+  font-size: 20px;
+}
+
+.markdown-message h3 {
+  font-size: 17px;
+}
+
+.markdown-message h4 {
+  font-size: 15px;
+}
+
+.markdown-message h5,
+.markdown-message h6 {
+  font-size: 14px;
+}
+
+.markdown-message > h1:first-child,
+.markdown-message > h2:first-child,
+.markdown-message > h3:first-child,
+.markdown-message > h4:first-child {
+  margin-top: 0;
+}
+
+/* =========================================
+   BOLD / ITALIC
+========================================= */
+
+.markdown-message strong {
+  color: #f1f3f5;
+
+  font-weight: 650;
+}
+
+.markdown-message em {
+  color: #c6cbd0;
+}
+
+/* =========================================
+   LISTS
+========================================= */
+
+.markdown-message ul,
+.markdown-message ol {
+  margin: 12px 0 16px;
+
+  padding-left: 24px;
+}
+
+.markdown-message li {
+  margin: 6px 0;
+
+  padding-left: 3px;
+}
+
+.markdown-message li::marker {
+  color: #788089;
+}
+
+.markdown-message li > p {
+  margin: 0;
+}
+
+/* =========================================
+   INLINE CODE
+========================================= */
+
+.markdown-message code {
+  padding: 2px 6px;
+
+  border: 1px solid #2c3137;
+  border-radius: 6px;
+
+  background: #171a1f;
+
+  color: #b7f7d3;
+
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    monospace;
+
+  font-size: 0.9em;
+}
+
+/* =========================================
+   CODE BLOCKS
+========================================= */
+
+.markdown-message pre {
+  width: 100%;
+
+  margin: 16px 0;
+
+  overflow-x: auto;
+
+  border: 1px solid #292e34;
+  border-radius: 12px;
+
+  background: #0d0f12;
+}
+
+.markdown-message pre code {
+  display: block;
+
+  min-width: max-content;
+
+  padding: 16px 18px;
+
+  border: 0;
+  border-radius: 0;
+
+  background: transparent;
+
+  color: #d7dbdf;
+
+  font-size: 12.5px;
+  line-height: 1.65;
+
+  white-space: pre;
+}
+
+.markdown-message pre::-webkit-scrollbar {
+  height: 7px;
+}
+
+.markdown-message pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.markdown-message pre::-webkit-scrollbar-thumb {
+  border-radius: 100px;
+
+  background: #30353b;
+}
+
+/* =========================================
+   BLOCKQUOTES
+========================================= */
+
+.markdown-message blockquote {
+  margin: 16px 0;
+
+  padding: 3px 0 3px 16px;
+
+  border-left: 3px solid rgba(113, 255, 181, 0.45);
+
+  color: #9da4ab;
+}
+
+.markdown-message blockquote p {
+  margin: 0;
+}
+
+/* =========================================
+   LINKS
+========================================= */
+
+.markdown-message a {
+  color: var(--signal);
+
+  text-decoration: none;
+}
+
+.markdown-message a:hover {
+  text-decoration: underline;
+}
+
+/* =========================================
+   HORIZONTAL RULE
+========================================= */
+
+.markdown-message hr {
+  margin: 24px 0;
+
+  border: 0;
+  border-top: 1px solid var(--border-color);
+}
+
+/* =========================================
+   TABLES
+========================================= */
+
+.markdown-message table {
+  width: 100%;
+
+  margin: 18px 0;
+
+  border-collapse: collapse;
+
+  font-size: 12px;
+}
+
+.markdown-message th,
+.markdown-message td {
+  padding: 10px 12px;
+
+  border: 1px solid #2b3036;
+
+  text-align: left;
+}
+
+.markdown-message th {
+  background: #16191e;
+
+  color: #e4e7e9;
+
+  font-weight: 650;
+}
+
+.markdown-message td {
+  color: #b7bdc3;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 640px) {
+  .markdown-message {
+    font-size: 13px;
+  }
+
+  .markdown-message h1 {
+    font-size: 21px;
+  }
+
+  .markdown-message h2 {
+    font-size: 18px;
+  }
+
+  .markdown-message h3 {
+    font-size: 16px;
+  }
+
+  .markdown-message pre code {
+    padding: 14px;
+
+    font-size: 11.5px;
+  }
+}

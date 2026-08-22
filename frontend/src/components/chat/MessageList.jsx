@@ -1,5 +1,7 @@
 import { Bot, User } from "lucide-react";
 
+import MarkdownMessage from "./MarkdownMessage";
+
 import "./MessageList.css";
 
 function MessageList({ messages, isLoading }) {
@@ -29,7 +31,13 @@ function MessageList({ messages, isLoading }) {
               </div>
 
               <div className="message-content">
-                {message.content}
+                {message.role === "assistant" ? (
+                  <MarkdownMessage
+                    content={message.content}
+                  />
+                ) : (
+                  message.content
+                )}
               </div>
             </div>
           </article>
