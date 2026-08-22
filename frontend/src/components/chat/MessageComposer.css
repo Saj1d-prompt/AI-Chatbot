@@ -166,3 +166,25 @@
     border-radius: 15px;
   }
 }
+
+.message-composer textarea:disabled {
+  opacity: 0.75;
+
+  cursor: default;
+}
+
+.composer-tool-button:disabled {
+  opacity: 0.4;
+
+  cursor: default;
+}
+
+.send-loader {
+  animation: sendLoaderSpin 800ms linear infinite;
+}
+
+@keyframes sendLoaderSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}

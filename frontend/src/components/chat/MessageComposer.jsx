@@ -1,5 +1,6 @@
 import {
   ArrowUp,
+  LoaderCircle,
   Paperclip,
   SlidersHorizontal,
 } from "lucide-react";
@@ -10,11 +11,13 @@ function MessageComposer({
   value,
   onChange,
   onSubmit,
+  isLoading,
 }) {
   const handleKeyDown = (event) => {
     if (
       event.key === "Enter" &&
-      !event.shiftKey
+      !event.shiftKey &&
+      !isLoading
     ) {
       event.preventDefault();
 
@@ -33,6 +36,7 @@ function MessageComposer({
           rows={1}
           placeholder="Ask Nexus anything..."
           aria-label="Message"
+          disabled={isLoading}
           onChange={(event) =>
             onChange(event.target.value)
           }
@@ -45,6 +49,7 @@ function MessageComposer({
               type="button"
               className="composer-tool-button"
               aria-label="Attach file"
+              disabled={isLoading}
             >
               <Paperclip size={17} />
             </button>
@@ -53,6 +58,7 @@ function MessageComposer({
               type="button"
               className="composer-tool-button"
               aria-label="Chat settings"
+              disabled={isLoading}
             >
               <SlidersHorizontal size={16} />
             </button>
@@ -61,10 +67,17 @@ function MessageComposer({
           <button
             className="composer-send-button"
             type="submit"
-            disabled={!value.trim()}
+            disabled={!value.trim() || isLoading}
             aria-label="Send message"
           >
-            <ArrowUp size={18} strokeWidth={2.4} />
+            {isLoading ? (
+              <LoaderCircle
+                className="send-loader"
+                size={17}
+              />
+            ) : (
+              <ArrowUp size={18} strokeWidth={2.4} />
+            )}
           </button>
         </div>
       </form>

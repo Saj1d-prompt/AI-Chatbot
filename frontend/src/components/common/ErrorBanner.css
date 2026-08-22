@@ -1,0 +1,63 @@
+.error-banner {
+  position: absolute;
+  z-index: 15;
+
+  top: 76px;
+  left: 50%;
+
+  display: flex;
+  align-items: center;
+
+  width: min(540px, calc(100% - 32px));
+
+  gap: 9px;
+
+  padding: 10px 12px;
+
+  border: 1px solid rgba(255, 116, 116, 0.22);
+  border-radius: 10px;
+
+  background: rgba(47, 20, 22, 0.96);
+
+  color: #f2b8ba;
+
+  font-size: 11px;
+
+  transform: translateX(-50%);
+
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+
+  backdrop-filter: blur(12px);
+}
+
+.error-banner span {
+  flex: 1;
+}
+
+.error-banner button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 26px;
+  height: 26px;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 7px;
+
+  background: transparent;
+
+  color: inherit;
+}
+
+.error-banner button:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 560px) {
+  .error-banner {
+    top: 70px;
+  }
+}
