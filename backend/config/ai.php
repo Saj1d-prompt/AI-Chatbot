@@ -6,9 +6,6 @@ return [
     |--------------------------------------------------------------------------
     | Default AI Provider
     |--------------------------------------------------------------------------
-    |
-    | Determines which AI provider the application should use.
-    |
     */
 
     'default' => env('AI_PROVIDER', 'cloudflare'),
@@ -28,13 +25,31 @@ return [
     |--------------------------------------------------------------------------
     | Maximum Output Tokens
     |--------------------------------------------------------------------------
+    */
+
+    'max_tokens' => (int) env(
+        'AI_MAX_TOKENS',
+        1024
+    ),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Conversation Context
+    |--------------------------------------------------------------------------
     |
-    | Controls the maximum number of tokens that the AI provider may generate
-    | for a single assistant response.
+    | This controls how many of the most recent stored messages are sent to
+    | the AI provider when generating a new response.
+    |
+    | IMPORTANT:
+    | This does NOT control how many messages are stored in MySQL.
+    | The database continues storing the full conversation.
     |
     */
 
-    'max_tokens' => (int) env('AI_MAX_TOKENS', 1024),
+    'context_message_limit' => (int) env(
+        'AI_CONTEXT_MESSAGE_LIMIT',
+        12
+    ),
 
     /*
     |--------------------------------------------------------------------------
@@ -45,9 +60,13 @@ return [
     'providers' => [
 
         'cloudflare' => [
-            'account_id' => env('CLOUDFLARE_ACCOUNT_ID'),
+            'account_id' => env(
+                'CLOUDFLARE_ACCOUNT_ID'
+            ),
 
-            'token' => env('CLOUDFLARE_AI_TOKEN'),
+            'token' => env(
+                'CLOUDFLARE_AI_TOKEN'
+            ),
 
             'model' => env(
                 'CLOUDFLARE_AI_MODEL',

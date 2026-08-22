@@ -11,8 +11,27 @@ class ChatService
     ) {
     }
 
+    /**
+     * Send one standalone message without conversation persistence.
+     */
     public function sendMessage(string $message): string
     {
+        return $this->generateReply([
+            [
+                'role' => 'user',
+                'content' => $message,
+            ],
+        ]);
+    }
+
+    /**
+     * Generate an AI reply using the supplied conversation context.
+     *
+     * @param array<int, array{role: string, content: string}> $conversationMessages
+     */
+    public function generateReply(
+        array $conversationMessages
+    ): string {
         $messages = [
             [
                 'role' => 'system',
@@ -21,10 +40,8 @@ class ChatService
                     'You are a helpful AI assistant.'
                 ),
             ],
-            [
-                'role' => 'user',
-                'content' => $message,
-            ],
+
+            ...$conversationMessages,
         ];
 
         return $this->aiProvider->chat($messages);
