@@ -6,7 +6,10 @@ import {
 
 import "./ChatHeader.css";
 
-function ChatHeader({ onMenuClick }) {
+function ChatHeader({
+  onMenuClick,
+  conversation,
+}) {
   return (
     <header className="chat-header">
       <div className="chat-header-left">
@@ -19,10 +22,14 @@ function ChatHeader({ onMenuClick }) {
           <Menu size={19} />
         </button>
 
-        <button className="assistant-selector" type="button">
+        <button
+          className="assistant-selector"
+          type="button"
+        >
           <div>
             <span className="assistant-name">
-              Nexus Assistant
+              {conversation?.title ||
+                "Nexus Assistant"}
             </span>
 
             <span className="assistant-model">

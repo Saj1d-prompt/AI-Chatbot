@@ -57,3 +57,38 @@
     backdrop-filter: blur(3px);
   }
 }
+
+.conversation-loading-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+
+  width: 100%;
+  min-height: 100%;
+
+  gap: 12px;
+
+  color: var(--text-tertiary);
+
+  font-size: 11px;
+}
+
+.conversation-loading-spinner {
+  width: 22px;
+  height: 22px;
+
+  border: 2px solid #262b30;
+  border-top-color: var(--signal);
+  border-radius: 50%;
+
+  animation:
+    conversationLoadingSpin
+    800ms linear infinite;
+}
+
+@keyframes conversationLoadingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}

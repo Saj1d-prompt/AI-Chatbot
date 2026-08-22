@@ -173,3 +173,27 @@
     font-size: 13px;
   }
 }
+
+.older-message-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  padding: 8px 0 14px;
+
+  color: var(--text-tertiary);
+
+  font-size: 10px;
+}
+
+.older-message-loader svg {
+  animation: olderMessageLoaderSpin 800ms linear infinite;
+}
+
+@keyframes olderMessageLoaderSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}

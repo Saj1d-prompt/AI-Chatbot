@@ -1,13 +1,29 @@
-import { Bot, User } from "lucide-react";
+import {
+  Bot,
+  LoaderCircle,
+  User,
+} from "lucide-react";
 
 import MarkdownMessage from "./MarkdownMessage";
 
 import "./MessageList.css";
 
-function MessageList({ messages, isLoading }) {
+function MessageList({
+  messages,
+  isLoading,
+  isLoadingOlder,
+}) {
   return (
     <section className="message-list">
       <div className="message-list-inner">
+        {isLoadingOlder && (
+          <div className="older-message-loader">
+            <LoaderCircle size={15} />
+
+            <span>Loading older messages...</span>
+          </div>
+        )}
+
         {messages.map((message) => (
           <article
             className={`chat-message chat-message-${message.role}`}
