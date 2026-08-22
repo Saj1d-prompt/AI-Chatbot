@@ -11,8 +11,12 @@ use RuntimeException;
 class CloudflareAIProvider implements AIProviderInterface
 {
     private string $accountId;
+
     private string $token;
+
     private string $model;
+
+    private int $maxTokens;
 
     public function __construct()
     {
@@ -26,6 +30,11 @@ class CloudflareAIProvider implements AIProviderInterface
 
         $this->model = (string) config(
             'ai.providers.cloudflare.model'
+        );
+
+        $this->maxTokens = (int) config(
+            'ai.max_tokens',
+            1024
         );
 
         if (
@@ -60,6 +69,7 @@ class CloudflareAIProvider implements AIProviderInterface
             ->connectTimeout(10)
             ->post($url, [
                 'messages' => $messages,
+                'max_tokens' => $this->maxTokens,
             ]);
 
         $response->throw();
@@ -76,22 +86,27 @@ class CloudflareAIProvider implements AIProviderInterface
         |--------------------------------------------------------------------------
         | Normalize Cloudflare Response
         |--------------------------------------------------------------------------
-        |
-        | Cloudflare currently exposes the generated text through result.response
-        | and may also expose OpenAI-compatible choices.
-        |
         */
 
-        $reply = data_get($data, 'result.response');
+        $reply = data_get(
+            $data,
+            'result.response'
+        );
 
-        if (! is_string($reply) || trim($reply) === '') {
+        if (
+            ! is_string($reply) ||
+            trim($reply) === ''
+        ) {
             $reply = data_get(
                 $data,
                 'result.choices.0.message.content'
             );
         }
 
-        if (! is_string($reply) || trim($reply) === '') {
+        if (
+            ! is_string($reply) ||
+            trim($reply) === ''
+        ) {
             throw new RuntimeException(
                 'Cloudflare AI returned no usable assistant response.'
             );
