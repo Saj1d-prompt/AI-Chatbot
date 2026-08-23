@@ -475,6 +475,206 @@
   animation: sidebarLoaderSpin 800ms linear infinite;
 }
 
+.conversation-row {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+
+  width: 100%;
+}
+
+.conversation-row .conversation-item {
+  flex: 1;
+
+  min-width: 0;
+
+  padding-right: 36px;
+}
+
+.conversation-menu-button {
+  position: absolute;
+
+  top: 50%;
+  right: 6px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 28px;
+  height: 28px;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 7px;
+
+  background: transparent;
+
+  color: #6f767e;
+
+  opacity: 0;
+
+  transform: translateY(-50%);
+
+  transition:
+    opacity 150ms ease,
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.conversation-row:hover
+  .conversation-menu-button,
+.conversation-item-active
+  + .conversation-menu-button {
+  opacity: 1;
+}
+
+.conversation-menu-button:hover {
+  background: #24282d;
+
+  color: var(--text-primary);
+}
+
+.conversation-menu {
+  position: absolute;
+  z-index: 50;
+
+  top: calc(100% - 2px);
+  right: 5px;
+
+  width: 145px;
+
+  padding: 5px;
+
+  border: 1px solid #2a2f35;
+  border-radius: 10px;
+
+  background: #15181c;
+
+  box-shadow:
+    0 14px 38px rgba(0, 0, 0, 0.4);
+}
+
+.conversation-menu button {
+  display: flex;
+  align-items: center;
+
+  width: 100%;
+
+  gap: 9px;
+
+  padding: 8px 9px;
+
+  border: 0;
+  border-radius: 7px;
+
+  background: transparent;
+
+  color: #aeb4ba;
+
+  font-size: 11px;
+
+  text-align: left;
+}
+
+.conversation-menu button:hover {
+  background: #202429;
+
+  color: #e6e8ea;
+}
+
+.conversation-menu
+  .conversation-menu-delete {
+  color: #d98a8e;
+}
+
+.conversation-menu
+  .conversation-menu-delete:hover {
+  background: rgba(
+    220,
+    80,
+    85,
+    0.08
+  );
+
+  color: #ff9a9e;
+}
+
+.conversation-rename-form {
+  display: flex;
+  align-items: center;
+
+  width: 100%;
+
+  gap: 4px;
+
+  padding: 4px;
+}
+
+.conversation-rename-form input {
+  flex: 1;
+
+  min-width: 0;
+
+  padding: 7px 8px;
+
+  border: 1px solid #384048;
+  border-radius: 7px;
+  outline: none;
+
+  background: #111419;
+
+  color: var(--text-primary);
+
+  font-size: 11px;
+}
+
+.conversation-rename-form
+  input:focus {
+  border-color: rgba(
+    113,
+    255,
+    181,
+    0.45
+  );
+}
+
+.conversation-rename-form button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 28px;
+  height: 28px;
+
+  flex-shrink: 0;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 7px;
+
+  background: #1b1f24;
+
+  color: #9ca3aa;
+}
+
+.conversation-rename-form
+  button:hover:not(:disabled) {
+  background: #242a30;
+
+  color: var(--text-primary);
+}
+
+.conversation-rename-form
+  button:disabled {
+  opacity: 0.4;
+
+  cursor: default;
+}
+
 @keyframes sidebarLoaderSpin {
   to {
     transform: rotate(360deg);
