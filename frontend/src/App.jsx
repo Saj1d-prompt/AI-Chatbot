@@ -15,8 +15,10 @@ import ErrorBanner from "./components/common/ErrorBanner";
 
 import {
   createConversation,
+  deleteConversation,
   getConversationMessages,
   getConversations,
+  renameConversation,
   sendConversationMessage,
 } from "./services/api/conversationApi";
 
@@ -202,7 +204,7 @@ function App() {
         setError(
           requestError.response?.data
             ?.message ||
-            "Unable to load this conversation."
+          "Unable to load this conversation."
         );
       } finally {
         if (
@@ -215,6 +217,124 @@ function App() {
     },
     []
   );
+
+  const handleRenameConversation = async (
+    conversationId,
+    title
+  ) => {
+    try {
+      const data =
+        await renameConversation(
+          conversationId,
+          title
+        );
+
+      if (
+        !data.success ||
+        !data.conversation
+      ) {
+        throw new Error(
+          "Invalid rename response."
+        );
+      }
+
+      setConversations(
+        (currentConversations) =>
+          currentConversations.map(
+            (conversation) =>
+              conversation.id ===
+                conversationId
+                ? data.conversation
+                : conversation
+          )
+      );
+
+      return true;
+    } catch (requestError) {
+      console.error(
+        "Failed to rename conversation:",
+        requestError
+      );
+
+      setError(
+        requestError.response?.data
+          ?.message ||
+        "Unable to rename the conversation."
+      );
+
+      return false;
+    }
+  };
+
+  const handleDeleteConversation = async (
+    conversationId
+  ) => {
+    const confirmed = window.confirm(
+      "Delete this conversation? This cannot be undone."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const data =
+        await deleteConversation(
+          conversationId
+        );
+
+      if (!data.success) {
+        throw new Error(
+          "Invalid delete response."
+        );
+      }
+
+      const remainingConversations =
+        conversations.filter(
+          (conversation) =>
+            conversation.id !==
+            conversationId
+        );
+
+      setConversations(
+        remainingConversations
+      );
+
+      if (
+        activeConversationId ===
+        conversationId
+      ) {
+        if (
+          remainingConversations.length >
+          0
+        ) {
+          await openConversation(
+            remainingConversations[0].id
+          );
+        } else {
+          setActiveConversationId(null);
+
+          setMessages([]);
+
+          setPagination({
+            has_more: false,
+            next_before_id: null,
+          });
+        }
+      }
+    } catch (requestError) {
+      console.error(
+        "Failed to delete conversation:",
+        requestError
+      );
+
+      setError(
+        requestError.response?.data
+          ?.message ||
+        "Unable to delete the conversation."
+      );
+    }
+  };
 
   /*
    * Initial application bootstrap.
@@ -262,7 +382,7 @@ function App() {
         setError(
           requestError.response?.data
             ?.message ||
-            "Unable to load conversations."
+          "Unable to load conversations."
         );
       } finally {
         setIsLoadingConversations(false);
@@ -329,7 +449,7 @@ function App() {
       setError(
         requestError.response?.data
           ?.message ||
-          "Unable to create a new conversation."
+        "Unable to create a new conversation."
       );
     } finally {
       setIsCreatingConversation(false);
@@ -411,7 +531,7 @@ function App() {
         setError(
           requestError.response?.data
             ?.message ||
-            "Unable to load older messages."
+          "Unable to load older messages."
         );
       } finally {
         setIsLoadingOlder(false);
@@ -593,7 +713,7 @@ function App() {
       setError(
         requestError.response?.data
           ?.message ||
-          "Unable to reach the AI assistant. Please try again."
+        "Unable to reach the AI assistant. Please try again."
       );
     } finally {
       setIsLoading(false);
@@ -668,6 +788,12 @@ function App() {
         }
         onSelectConversation={
           openConversation
+        }
+        onRenameConversation={
+          handleRenameConversation
+        }
+        onDeleteConversation={
+          handleDeleteConversation
         }
         isLoadingConversations={
           isLoadingConversations
