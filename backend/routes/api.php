@@ -47,6 +47,11 @@ Route::get(
     [ConversationController::class, 'show']
 );
 
+Route::patch(
+    '/conversations/{conversation}',
+    [ConversationController::class, 'update']
+);
+
 Route::delete(
     '/conversations/{conversation}',
     [ConversationController::class, 'destroy']
