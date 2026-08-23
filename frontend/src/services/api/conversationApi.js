@@ -1,12 +1,16 @@
 import apiClient from "./apiClient";
 
 export async function getConversations() {
-  const response = await apiClient.get("/conversations");
+  const response = await apiClient.get(
+    "/conversations"
+  );
 
   return response.data;
 }
 
-export async function createConversation(title = null) {
+export async function createConversation(
+  title = null
+) {
   const payload = {};
 
   if (title) {
@@ -49,6 +53,20 @@ export async function sendConversationMessage(
     `/conversations/${conversationId}/messages`,
     {
       message,
+    }
+  );
+
+  return response.data;
+}
+
+export async function renameConversation(
+  conversationId,
+  title
+) {
+  const response = await apiClient.patch(
+    `/conversations/${conversationId}`,
+    {
+      title,
     }
   );
 
