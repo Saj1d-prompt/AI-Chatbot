@@ -1,12 +1,18 @@
+import { useState } from "react";
+
 import {
   Bot,
+  Check,
   LoaderCircle,
   MessageSquareText,
   MoreHorizontal,
   PanelLeftClose,
+  Pencil,
   Plus,
   Search,
   Settings2,
+  Trash2,
+  X,
 } from "lucide-react";
 
 import "./Sidebar.css";
@@ -51,14 +57,113 @@ function Sidebar({
   conversations,
   activeConversationId,
   onSelectConversation,
+  onRenameConversation,
+  onDeleteConversation,
   isLoadingConversations,
   isCreatingConversation,
 }) {
-  const groups = groupConversations(conversations);
+  const [menuConversationId, setMenuConversationId] =
+    useState(null);
 
-  const handleConversationClick = (conversationId) => {
+  const [editingConversationId, setEditingConversationId] =
+    useState(null);
+
+  const [editingTitle, setEditingTitle] =
+    useState("");
+
+  const groups =
+    groupConversations(conversations);
+
+  const handleConversationClick = (
+    conversationId
+  ) => {
+    if (
+      editingConversationId === conversationId
+    ) {
+      return;
+    }
+
+    setMenuConversationId(null);
+
     onSelectConversation(conversationId);
+
     onClose();
+  };
+
+  const handleMenuClick = (
+    event,
+    conversationId
+  ) => {
+    event.stopPropagation();
+
+    setMenuConversationId(
+      (currentId) =>
+        currentId === conversationId
+          ? null
+          : conversationId
+    );
+  };
+
+  const startRename = (
+    event,
+    conversation
+  ) => {
+    event.stopPropagation();
+
+    setMenuConversationId(null);
+
+    setEditingConversationId(
+      conversation.id
+    );
+
+    setEditingTitle(
+      conversation.title || ""
+    );
+  };
+
+  const cancelRename = (event) => {
+    event?.stopPropagation();
+
+    setEditingConversationId(null);
+    setEditingTitle("");
+  };
+
+  const submitRename = async (
+    event,
+    conversationId
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const title = editingTitle.trim();
+
+    if (!title) {
+      return;
+    }
+
+    const success =
+      await onRenameConversation(
+        conversationId,
+        title
+      );
+
+    if (success) {
+      setEditingConversationId(null);
+      setEditingTitle("");
+    }
+  };
+
+  const handleDelete = async (
+    event,
+    conversationId
+  ) => {
+    event.stopPropagation();
+
+    setMenuConversationId(null);
+
+    await onDeleteConversation(
+      conversationId
+    );
   };
 
   return (
@@ -71,7 +176,10 @@ function Sidebar({
         <div className="sidebar-brand-row">
           <div className="sidebar-brand">
             <div className="brand-symbol">
-              <Bot size={19} strokeWidth={2} />
+              <Bot
+                size={19}
+                strokeWidth={2}
+              />
             </div>
 
             <div className="brand-copy">
@@ -123,7 +231,9 @@ function Sidebar({
         >
           <Search size={16} />
 
-          <span>Search conversations</span>
+          <span>
+            Search conversations
+          </span>
         </button>
       </div>
 
@@ -135,16 +245,21 @@ function Sidebar({
               size={17}
             />
 
-            <span>Loading conversations...</span>
+            <span>
+              Loading conversations...
+            </span>
           </div>
         ) : groups.length === 0 ? (
           <div className="sidebar-empty-state">
             <MessageSquareText size={20} />
 
-            <span>No conversations yet</span>
+            <span>
+              No conversations yet
+            </span>
 
             <small>
-              Start a new conversation to begin.
+              Start a new conversation
+              to begin.
             </small>
           </div>
         ) : (
@@ -158,38 +273,159 @@ function Sidebar({
               </p>
 
               <div className="conversation-list">
-                {group.items.map((conversation) => (
-                  <button
-                    className={`conversation-item ${
-                      conversation.id ===
-                      activeConversationId
-                        ? "conversation-item-active"
-                        : ""
-                    }`}
-                    type="button"
-                    key={conversation.id}
-                    onClick={() =>
-                      handleConversationClick(
-                        conversation.id
-                      )
-                    }
-                  >
-                    <MessageSquareText
-                      className="conversation-icon"
-                      size={16}
-                    />
+                {group.items.map(
+                  (conversation) => {
+                    const isEditing =
+                      editingConversationId ===
+                      conversation.id;
 
-                    <span className="conversation-title">
-                      {conversation.title ||
-                        "New conversation"}
-                    </span>
+                    const menuOpen =
+                      menuConversationId ===
+                      conversation.id;
 
-                    <MoreHorizontal
-                      className="conversation-more"
-                      size={16}
-                    />
-                  </button>
-                ))}
+                    return (
+                      <div
+                        className="conversation-row"
+                        key={conversation.id}
+                      >
+                        {isEditing ? (
+                          <form
+                            className="conversation-rename-form"
+                            onSubmit={(event) =>
+                              submitRename(
+                                event,
+                                conversation.id
+                              )
+                            }
+                          >
+                            <input
+                              autoFocus
+                              value={editingTitle}
+                              maxLength={120}
+                              onChange={(event) =>
+                                setEditingTitle(
+                                  event.target.value
+                                )
+                              }
+                              onKeyDown={(event) => {
+                                if (
+                                  event.key ===
+                                  "Escape"
+                                ) {
+                                  cancelRename(
+                                    event
+                                  );
+                                }
+                              }}
+                            />
+
+                            <button
+                              type="submit"
+                              aria-label="Save conversation title"
+                              disabled={
+                                !editingTitle.trim()
+                              }
+                            >
+                              <Check size={14} />
+                            </button>
+
+                            <button
+                              type="button"
+                              aria-label="Cancel rename"
+                              onClick={
+                                cancelRename
+                              }
+                            >
+                              <X size={14} />
+                            </button>
+                          </form>
+                        ) : (
+                          <>
+                            <button
+                              className={`conversation-item ${
+                                conversation.id ===
+                                activeConversationId
+                                  ? "conversation-item-active"
+                                  : ""
+                              }`}
+                              type="button"
+                              onClick={() =>
+                                handleConversationClick(
+                                  conversation.id
+                                )
+                              }
+                            >
+                              <MessageSquareText
+                                className="conversation-icon"
+                                size={16}
+                              />
+
+                              <span className="conversation-title">
+                                {conversation.title ||
+                                  "New conversation"}
+                              </span>
+                            </button>
+
+                            <button
+                              className="conversation-menu-button"
+                              type="button"
+                              aria-label="Conversation options"
+                              onClick={(event) =>
+                                handleMenuClick(
+                                  event,
+                                  conversation.id
+                                )
+                              }
+                            >
+                              <MoreHorizontal
+                                size={16}
+                              />
+                            </button>
+
+                            {menuOpen && (
+                              <div className="conversation-menu">
+                                <button
+                                  type="button"
+                                  onClick={(
+                                    event
+                                  ) =>
+                                    startRename(
+                                      event,
+                                      conversation
+                                    )
+                                  }
+                                >
+                                  <Pencil
+                                    size={14}
+                                  />
+                                  Rename
+                                </button>
+
+                                <button
+                                  className="conversation-menu-delete"
+                                  type="button"
+                                  onClick={(
+                                    event
+                                  ) =>
+                                    handleDelete(
+                                      event,
+                                      conversation.id
+                                    )
+                                  }
+                                >
+                                  <Trash2
+                                    size={14}
+                                  />
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  }
+                )}
               </div>
             </section>
           ))
@@ -213,12 +449,16 @@ function Sidebar({
         </button>
 
         <div className="sidebar-profile">
-          <div className="profile-avatar">U</div>
+          <div className="profile-avatar">
+            U
+          </div>
 
           <div className="profile-copy">
             <span>User</span>
 
-            <small>Local development</small>
+            <small>
+              Local development
+            </small>
           </div>
 
           <MoreHorizontal size={17} />
