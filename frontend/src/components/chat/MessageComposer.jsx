@@ -1,4 +1,9 @@
 import {
+  useEffect,
+  useRef,
+} from "react";
+
+import {
   ArrowUp,
   LoaderCircle,
   Paperclip,
@@ -7,12 +12,45 @@ import {
 
 import "./MessageComposer.css";
 
+const MAX_TEXTAREA_HEIGHT = 180;
+
 function MessageComposer({
   value,
   onChange,
   onSubmit,
   isLoading,
 }) {
+  const textareaRef = useRef(null);
+
+  const resizeTextarea = () => {
+    const textarea =
+      textareaRef.current;
+
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = "auto";
+
+    const nextHeight = Math.min(
+      textarea.scrollHeight,
+      MAX_TEXTAREA_HEIGHT
+    );
+
+    textarea.style.height =
+      `${nextHeight}px`;
+
+    textarea.style.overflowY =
+      textarea.scrollHeight >
+      MAX_TEXTAREA_HEIGHT
+        ? "auto"
+        : "hidden";
+  };
+
+  useEffect(() => {
+    resizeTextarea();
+  }, [value]);
+
   const handleKeyDown = (event) => {
     if (
       event.key === "Enter" &&
@@ -32,6 +70,7 @@ function MessageComposer({
         onSubmit={onSubmit}
       >
         <textarea
+          ref={textareaRef}
           value={value}
           rows={1}
           placeholder="Ask Nexus anything..."
@@ -60,14 +99,19 @@ function MessageComposer({
               aria-label="Chat settings"
               disabled={isLoading}
             >
-              <SlidersHorizontal size={16} />
+              <SlidersHorizontal
+                size={16}
+              />
             </button>
           </div>
 
           <button
             className="composer-send-button"
             type="submit"
-            disabled={!value.trim() || isLoading}
+            disabled={
+              !value.trim() ||
+              isLoading
+            }
             aria-label="Send message"
           >
             {isLoading ? (
@@ -76,15 +120,28 @@ function MessageComposer({
                 size={17}
               />
             ) : (
-              <ArrowUp size={18} strokeWidth={2.4} />
+              <ArrowUp
+                size={18}
+                strokeWidth={2.4}
+              />
             )}
           </button>
         </div>
       </form>
 
-      <p className="composer-disclaimer">
-        AI can make mistakes. Verify important information.
-      </p>
+      <div className="composer-footer">
+        <span>
+          Shift + Enter for new line
+        </span>
+
+        <span className="composer-footer-separator">
+          •
+        </span>
+
+        <span>
+          AI can make mistakes. Verify important information.
+        </span>
+      </div>
     </div>
   );
 }
