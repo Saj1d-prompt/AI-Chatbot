@@ -1,5 +1,9 @@
+import { useState } from "react";
+
 import {
   Bot,
+  Check,
+  Copy,
   LoaderCircle,
   User,
 } from "lucide-react";
@@ -13,6 +17,32 @@ function MessageList({
   isLoading,
   isLoadingOlder,
 }) {
+  const [copiedMessageId, setCopiedMessageId] =
+    useState(null);
+
+  const handleCopy = async (message) => {
+    try {
+      await navigator.clipboard.writeText(
+        message.content
+      );
+
+      setCopiedMessageId(message.id);
+
+      window.setTimeout(() => {
+        setCopiedMessageId((currentId) =>
+          currentId === message.id
+            ? null
+            : currentId
+        );
+      }, 1800);
+    } catch (error) {
+      console.error(
+        "Failed to copy message:",
+        error
+      );
+    }
+  };
+
   return (
     <section className="message-list">
       <div className="message-list-inner">
@@ -20,44 +50,80 @@ function MessageList({
           <div className="older-message-loader">
             <LoaderCircle size={15} />
 
-            <span>Loading older messages...</span>
+            <span>
+              Loading older messages...
+            </span>
           </div>
         )}
 
-        {messages.map((message) => (
-          <article
-            className={`chat-message chat-message-${message.role}`}
-            key={message.id}
-          >
-            <div className="message-avatar">
-              {message.role === "assistant" ? (
-                <Bot size={17} />
-              ) : (
-                <User size={16} />
-              )}
-            </div>
+        {messages.map((message) => {
+          const isAssistant =
+            message.role === "assistant";
 
-            <div className="message-body">
-              <div className="message-meta">
-                <span>
-                  {message.role === "assistant"
-                    ? "Nexus"
-                    : "You"}
-                </span>
-              </div>
+          const isCopied =
+            copiedMessageId === message.id;
 
-              <div className="message-content">
-                {message.role === "assistant" ? (
-                  <MarkdownMessage
-                    content={message.content}
-                  />
+          return (
+            <article
+              className={`chat-message chat-message-${message.role}`}
+              key={message.id}
+            >
+              <div className="message-avatar">
+                {isAssistant ? (
+                  <Bot size={17} />
                 ) : (
-                  message.content
+                  <User size={16} />
                 )}
               </div>
-            </div>
-          </article>
-        ))}
+
+              <div className="message-body">
+                <div className="message-meta">
+                  <span>
+                    {isAssistant
+                      ? "Nexus"
+                      : "You"}
+                  </span>
+                </div>
+
+                <div className="message-content">
+                  {isAssistant ? (
+                    <MarkdownMessage
+                      content={message.content}
+                    />
+                  ) : (
+                    message.content
+                  )}
+                </div>
+
+                {isAssistant && (
+                  <div className="message-actions">
+                    <button
+                      type="button"
+                      className="message-action-button"
+                      onClick={() =>
+                        handleCopy(message)
+                      }
+                      aria-label="Copy response"
+                      title="Copy response"
+                    >
+                      {isCopied ? (
+                        <>
+                          <Check size={14} />
+                          <span>Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={14} />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </article>
+          );
+        })}
 
         {isLoading && (
           <article className="chat-message chat-message-assistant">
