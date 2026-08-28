@@ -72,3 +72,8 @@ Route::post(
     '/conversations/{conversation}/messages',
     [ConversationMessageController::class, 'store']
 );
+
+Route::post(
+    '/conversations/{conversation}/regenerate',
+    [ConversationMessageController::class, 'regenerate']
+);
