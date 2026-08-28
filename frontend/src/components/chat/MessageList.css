@@ -263,6 +263,87 @@
   }
 }
 
+.message-action-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.action-spinner {
+  animation:
+    messageActionSpin
+    800ms linear infinite;
+}
+
+.retry-response {
+  display: flex;
+
+  margin-top: 12px;
+}
+
+.retry-response-button {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  padding: 7px 10px;
+
+  border: 1px solid rgba(
+    255,
+    150,
+    150,
+    0.18
+  );
+
+  border-radius: 8px;
+
+  background: rgba(
+    255,
+    100,
+    100,
+    0.04
+  );
+
+  color: #c99093;
+
+  font-size: 10px;
+
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.retry-response-button:hover:not(:disabled) {
+  border-color: rgba(
+    255,
+    150,
+    150,
+    0.3
+  );
+
+  background: rgba(
+    255,
+    100,
+    100,
+    0.07
+  );
+
+  color: #e5a4a7;
+}
+
+.retry-response-button:disabled {
+  opacity: 0.5;
+
+  cursor: default;
+}
+
+@keyframes messageActionSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @keyframes olderMessageLoaderSpin {
   to {
     transform: rotate(360deg);
