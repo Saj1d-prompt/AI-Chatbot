@@ -59,6 +59,16 @@ export async function sendConversationMessage(
   return response.data;
 }
 
+export async function regenerateConversationResponse(
+  conversationId
+) {
+  const response = await apiClient.post(
+    `/conversations/${conversationId}/regenerate`
+  );
+
+  return response.data;
+}
+
 export async function renameConversation(
   conversationId,
   title
