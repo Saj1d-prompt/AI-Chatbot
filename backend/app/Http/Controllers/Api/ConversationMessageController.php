@@ -7,6 +7,7 @@ use App\Http\Requests\Conversation\ListMessagesRequest;
 use App\Http\Requests\Conversation\SendMessageRequest;
 use App\Models\Conversation;
 use App\Services\Conversations\ConversationChatService;
+use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -19,10 +20,7 @@ class ConversationMessageController extends Controller
     }
 
     /**
-     * Return a paginated batch of conversation messages.
-     *
-     * Newest messages are loaded initially.
-     * Older messages can then be requested using before_id.
+     * Return paginated conversation messages.
      */
     public function index(
         ListMessagesRequest $request,
@@ -35,22 +33,8 @@ class ConversationMessageController extends Controller
             ?? config('chat.message_page_size', 20)
         );
 
-        $beforeId = $validated['before_id'] ?? null;
-
-        /*
-        |--------------------------------------------------------------------------
-        | Fetch One Extra Message
-        |--------------------------------------------------------------------------
-        |
-        | If the client asks for 20, we fetch 21.
-        |
-        | 21 found:
-        | → there are older messages
-        |
-        | <= 20 found:
-        | → we've reached the beginning
-        |
-        */
+        $beforeId =
+            $validated['before_id'] ?? null;
 
         $query = $conversation
             ->messages()
@@ -77,36 +61,20 @@ class ConversationMessageController extends Controller
             ->limit($limit + 1)
             ->get();
 
-        $hasMore = $messages->count() > $limit;
+        $hasMore =
+            $messages->count() > $limit;
 
         if ($hasMore) {
-            $messages = $messages->take($limit);
+            $messages =
+                $messages->take($limit);
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Restore Chronological Order
-        |--------------------------------------------------------------------------
-        |
-        | SQL fetched:
-        |
-        | 100
-        | 99
-        | 98
-        |
-        | UI receives:
-        |
-        | 98
-        | 99
-        | 100
-        |
-        */
 
         $messages = $messages
             ->reverse()
             ->values();
 
-        $oldestMessage = $messages->first();
+        $oldestMessage =
+            $messages->first();
 
         return response()->json([
             'success' => true,
@@ -117,7 +85,8 @@ class ConversationMessageController extends Controller
                 'has_more' => $hasMore,
 
                 'next_before_id' => (
-                    $hasMore && $oldestMessage
+                    $hasMore &&
+                    $oldestMessage
                         ? $oldestMessage->id
                         : null
                 ),
@@ -128,7 +97,7 @@ class ConversationMessageController extends Controller
     }
 
     /**
-     * Send a message inside a persisted conversation.
+     * Store a new user message and generate an AI response.
      */
     public function store(
         SendMessageRequest $request,
@@ -142,39 +111,34 @@ class ConversationMessageController extends Controller
                     $request->validated('message')
                 );
 
-            /*
-            |--------------------------------------------------------------------------
-            | Reload Conversation Metadata
-            |--------------------------------------------------------------------------
-            |
-            | The title or updated_at timestamp may have changed.
-            |
-            */
-
             $conversation->refresh();
 
             return response()->json([
                 'success' => true,
 
-                'conversation' => $conversation,
+                'conversation' =>
+                    $conversation,
 
-                'user_message' => $result[
-                    'user_message'
-                ],
+                'user_message' =>
+                    $result['user_message'],
 
-                'assistant_message' => $result[
-                    'assistant_message'
-                ],
+                'assistant_message' =>
+                    $result[
+                        'assistant_message'
+                    ],
             ], 201);
         } catch (Throwable $exception) {
             Log::error(
                 'Conversation AI request failed.',
                 [
-                    'conversation_id' => $conversation->id,
+                    'conversation_id' =>
+                        $conversation->id,
 
-                    'exception' => $exception::class,
+                    'exception' =>
+                        $exception::class,
 
-                    'message' => $exception->getMessage(),
+                    'message' =>
+                        $exception->getMessage(),
                 ]
             );
 
@@ -182,7 +146,68 @@ class ConversationMessageController extends Controller
                 'success' => false,
 
                 'message' =>
-                    'The AI service is temporarily unavailable. Please try again.',
+                    'The AI service is temporarily unavailable. You can retry the response.',
+            ], 502);
+        }
+    }
+
+    /**
+     * Regenerate or retry the latest assistant response.
+     */
+    public function regenerate(
+        Conversation $conversation
+    ): JsonResponse {
+        try {
+            $result = $this
+                ->conversationChatService
+                ->regenerateLatestResponse(
+                    $conversation
+                );
+
+            $conversation->refresh();
+
+            return response()->json([
+                'success' => true,
+
+                'mode' => $result['mode'],
+
+                'conversation' =>
+                    $conversation,
+
+                'user_message' =>
+                    $result['user_message'],
+
+                'assistant_message' =>
+                    $result[
+                        'assistant_message'
+                    ],
+            ]);
+        } catch (DomainException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    $exception->getMessage(),
+            ], 422);
+        } catch (Throwable $exception) {
+            Log::error(
+                'AI response regeneration failed.',
+                [
+                    'conversation_id' =>
+                        $conversation->id,
+
+                    'exception' =>
+                        $exception::class,
+
+                    'message' =>
+                        $exception->getMessage(),
+                ]
+            );
+
+            return response()->json([
+                'success' => false,
+
+                'message' =>
+                    'The AI response could not be generated. Please try again.',
             ], 502);
         }
     }
