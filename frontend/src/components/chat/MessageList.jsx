@@ -5,6 +5,8 @@ import {
   Check,
   Copy,
   LoaderCircle,
+  RefreshCw,
+  RotateCcw,
   User,
 } from "lucide-react";
 
@@ -16,9 +18,16 @@ function MessageList({
   messages,
   isLoading,
   isLoadingOlder,
+  isRegenerating,
+  onRegenerate,
 }) {
   const [copiedMessageId, setCopiedMessageId] =
     useState(null);
+
+  const lastMessage =
+    messages.length > 0
+      ? messages[messages.length - 1]
+      : null;
 
   const handleCopy = async (message) => {
     try {
@@ -29,10 +38,11 @@ function MessageList({
       setCopiedMessageId(message.id);
 
       window.setTimeout(() => {
-        setCopiedMessageId((currentId) =>
-          currentId === message.id
-            ? null
-            : currentId
+        setCopiedMessageId(
+          (currentId) =>
+            currentId === message.id
+              ? null
+              : currentId
         );
       }, 1800);
     } catch (error) {
@@ -61,7 +71,18 @@ function MessageList({
             message.role === "assistant";
 
           const isCopied =
-            copiedMessageId === message.id;
+            copiedMessageId ===
+            message.id;
+
+          const isLatestAssistant =
+            isAssistant &&
+            lastMessage?.id ===
+              message.id;
+
+          const isLatestUser =
+            message.role === "user" &&
+            lastMessage?.id ===
+              message.id;
 
           return (
             <article
@@ -88,7 +109,9 @@ function MessageList({
                 <div className="message-content">
                   {isAssistant ? (
                     <MarkdownMessage
-                      content={message.content}
+                      content={
+                        message.content
+                      }
                     />
                   ) : (
                     message.content
@@ -104,22 +127,102 @@ function MessageList({
                         handleCopy(message)
                       }
                       aria-label="Copy response"
-                      title="Copy response"
                     >
                       {isCopied ? (
                         <>
-                          <Check size={14} />
-                          <span>Copied</span>
+                          <Check
+                            size={14}
+                          />
+                          <span>
+                            Copied
+                          </span>
                         </>
                       ) : (
                         <>
-                          <Copy size={14} />
-                          <span>Copy</span>
+                          <Copy
+                            size={14}
+                          />
+                          <span>
+                            Copy
+                          </span>
                         </>
                       )}
                     </button>
+
+                    {isLatestAssistant && (
+                      <button
+                        type="button"
+                        className="message-action-button"
+                        disabled={
+                          isRegenerating ||
+                          isLoading
+                        }
+                        onClick={
+                          onRegenerate
+                        }
+                        aria-label="Regenerate response"
+                      >
+                        {isRegenerating ? (
+                          <>
+                            <RefreshCw
+                              className="action-spinner"
+                              size={14}
+                            />
+
+                            <span>
+                              Regenerating
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <RotateCcw
+                              size={14}
+                            />
+
+                            <span>
+                              Regenerate
+                            </span>
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 )}
+
+                {isLatestUser &&
+                  !isLoading && (
+                    <div className="retry-response">
+                      <button
+                        type="button"
+                        className="retry-response-button"
+                        disabled={
+                          isRegenerating
+                        }
+                        onClick={
+                          onRegenerate
+                        }
+                      >
+                        {isRegenerating ? (
+                          <>
+                            <RefreshCw
+                              className="action-spinner"
+                              size={14}
+                            />
+
+                            Retrying...
+                          </>
+                        ) : (
+                          <>
+                            <RotateCcw
+                              size={14}
+                            />
+
+                            Retry response
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
               </div>
             </article>
           );
