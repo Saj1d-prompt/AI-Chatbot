@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\ConversationMessageController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AuthController;
 
 Route::get('/health', function () {
     return response()->json([
@@ -77,3 +78,28 @@ Route::post(
     '/conversations/{conversation}/regenerate',
     [ConversationMessageController::class, 'regenerate']
 );
+
+Route::prefix('auth')->group(function () {
+    Route::post(
+        '/register',
+        [AuthController::class, 'register']
+    );
+
+    Route::post(
+        '/login',
+        [AuthController::class, 'login']
+    );
+
+    Route::middleware('auth:sanctum')
+        ->group(function () {
+            Route::get(
+                '/user',
+                [AuthController::class, 'user']
+            );
+
+            Route::post(
+                '/logout',
+                [AuthController::class, 'logout']
+            );
+        });
+});
