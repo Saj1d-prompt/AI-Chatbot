@@ -8,6 +8,9 @@ const apiClient = axios.create({
     "Content-Type": "application/json",
   },
 
+  withCredentials: true,
+  withXSRFToken: true,
+
   timeout: 70000,
 });
 
