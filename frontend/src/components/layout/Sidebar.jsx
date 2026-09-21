@@ -4,6 +4,7 @@ import {
   Bot,
   Check,
   LoaderCircle,
+  LogOut,
   MessageSquareText,
   MoreHorizontal,
   PanelLeftClose,
@@ -61,15 +62,23 @@ function Sidebar({
   onDeleteConversation,
   isLoadingConversations,
   isCreatingConversation,
+  user,
+  onLogout,
 }) {
-  const [menuConversationId, setMenuConversationId] =
-    useState(null);
+  const [
+    menuConversationId,
+    setMenuConversationId,
+  ] = useState(null);
 
-  const [editingConversationId, setEditingConversationId] =
-    useState(null);
+  const [
+    editingConversationId,
+    setEditingConversationId,
+  ] = useState(null);
 
-  const [editingTitle, setEditingTitle] =
-    useState("");
+  const [
+    editingTitle,
+    setEditingTitle,
+  ] = useState("");
 
   const groups =
     groupConversations(conversations);
@@ -78,14 +87,17 @@ function Sidebar({
     conversationId
   ) => {
     if (
-      editingConversationId === conversationId
+      editingConversationId ===
+      conversationId
     ) {
       return;
     }
 
     setMenuConversationId(null);
 
-    onSelectConversation(conversationId);
+    onSelectConversation(
+      conversationId
+    );
 
     onClose();
   };
@@ -135,7 +147,8 @@ function Sidebar({
     event.preventDefault();
     event.stopPropagation();
 
-    const title = editingTitle.trim();
+    const title =
+      editingTitle.trim();
 
     if (!title) {
       return;
@@ -165,6 +178,12 @@ function Sidebar({
       conversationId
     );
   };
+
+  const userInitial =
+    user?.name
+      ?.trim()
+      ?.charAt(0)
+      ?.toUpperCase() || "U";
 
   return (
     <aside
@@ -199,14 +218,18 @@ function Sidebar({
             aria-label="Close sidebar"
             onClick={onClose}
           >
-            <PanelLeftClose size={18} />
+            <PanelLeftClose
+              size={18}
+            />
           </button>
         </div>
 
         <button
           className="new-chat-button"
           type="button"
-          disabled={isCreatingConversation}
+          disabled={
+            isCreatingConversation
+          }
           onClick={onNewChat}
         >
           {isCreatingConversation ? (
@@ -251,7 +274,9 @@ function Sidebar({
           </div>
         ) : groups.length === 0 ? (
           <div className="sidebar-empty-state">
-            <MessageSquareText size={20} />
+            <MessageSquareText
+              size={20}
+            />
 
             <span>
               No conversations yet
@@ -286,12 +311,16 @@ function Sidebar({
                     return (
                       <div
                         className="conversation-row"
-                        key={conversation.id}
+                        key={
+                          conversation.id
+                        }
                       >
                         {isEditing ? (
                           <form
                             className="conversation-rename-form"
-                            onSubmit={(event) =>
+                            onSubmit={(
+                              event
+                            ) =>
                               submitRename(
                                 event,
                                 conversation.id
@@ -300,14 +329,24 @@ function Sidebar({
                           >
                             <input
                               autoFocus
-                              value={editingTitle}
-                              maxLength={120}
-                              onChange={(event) =>
+                              value={
+                                editingTitle
+                              }
+                              maxLength={
+                                120
+                              }
+                              onChange={(
+                                event
+                              ) =>
                                 setEditingTitle(
-                                  event.target.value
+                                  event
+                                    .target
+                                    .value
                                 )
                               }
-                              onKeyDown={(event) => {
+                              onKeyDown={(
+                                event
+                              ) => {
                                 if (
                                   event.key ===
                                   "Escape"
@@ -326,7 +365,9 @@ function Sidebar({
                                 !editingTitle.trim()
                               }
                             >
-                              <Check size={14} />
+                              <Check
+                                size={14}
+                              />
                             </button>
 
                             <button
@@ -336,7 +377,9 @@ function Sidebar({
                                 cancelRename
                               }
                             >
-                              <X size={14} />
+                              <X
+                                size={14}
+                              />
                             </button>
                           </form>
                         ) : (
@@ -370,7 +413,9 @@ function Sidebar({
                               className="conversation-menu-button"
                               type="button"
                               aria-label="Conversation options"
-                              onClick={(event) =>
+                              onClick={(
+                                event
+                              ) =>
                                 handleMenuClick(
                                   event,
                                   conversation.id
@@ -398,6 +443,7 @@ function Sidebar({
                                   <Pencil
                                     size={14}
                                   />
+
                                   Rename
                                 </button>
 
@@ -416,6 +462,7 @@ function Sidebar({
                                   <Trash2
                                     size={14}
                                   />
+
                                   Delete
                                 </button>
                               </div>
@@ -440,7 +487,9 @@ function Sidebar({
           <Settings2 size={17} />
 
           <div>
-            <span>Settings</span>
+            <span>
+              Settings
+            </span>
 
             <small>
               Preferences & configuration
@@ -450,18 +499,28 @@ function Sidebar({
 
         <div className="sidebar-profile">
           <div className="profile-avatar">
-            U
+            {userInitial}
           </div>
 
           <div className="profile-copy">
-            <span>User</span>
+            <span>
+              {user?.name || "User"}
+            </span>
 
             <small>
-              Local development
+              {user?.email || ""}
             </small>
           </div>
 
-          <MoreHorizontal size={17} />
+          <button
+            className="profile-logout-button"
+            type="button"
+            aria-label="Log out"
+            title="Log out"
+            onClick={onLogout}
+          >
+            <LogOut size={16} />
+          </button>
         </div>
       </div>
     </aside>
