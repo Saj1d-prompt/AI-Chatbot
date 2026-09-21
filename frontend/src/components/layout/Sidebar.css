@@ -675,6 +675,43 @@
   cursor: default;
 }
 
+.profile-logout-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 30px;
+  height: 30px;
+
+  flex-shrink: 0;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 7px;
+
+  background: transparent;
+
+  color: #687078;
+
+  cursor: pointer;
+
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.profile-logout-button:hover {
+  background: rgba(
+    255,
+    100,
+    100,
+    0.07
+  );
+
+  color: #df8f93;
+}
+
 @keyframes sidebarLoaderSpin {
   to {
     transform: rotate(360deg);
