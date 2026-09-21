@@ -6,12 +6,18 @@ import {
   useState,
 } from "react";
 
+import {
+  useNavigate,
+} from "react-router-dom";
+
 import Sidebar from "../components/layout/Sidebar";
 import ChatHeader from "../components/chat/ChatHeader";
 import EmptyState from "../components/chat/EmptyState";
 import MessageList from "../components/chat/MessageList";
 import MessageComposer from "../components/chat/MessageComposer";
 import ErrorBanner from "../components/common/ErrorBanner";
+
+import { useAuth } from "../context/AuthContext";
 
 import {
   createConversation,
@@ -49,14 +55,27 @@ const starterPrompts = [
 ];
 
 function ChatPage() {
-  const [sidebarOpen, setSidebarOpen] =
-    useState(false);
+  const navigate = useNavigate();
 
-  const [draft, setDraft] =
-    useState("");
+  const {
+    user,
+    logout,
+  } = useAuth();
 
-  const [messages, setMessages] =
-    useState([]);
+  const [
+    sidebarOpen,
+    setSidebarOpen,
+  ] = useState(false);
+
+  const [
+    draft,
+    setDraft,
+  ] = useState("");
+
+  const [
+    messages,
+    setMessages,
+  ] = useState([]);
 
   const [
     conversations,
@@ -76,8 +95,10 @@ function ChatPage() {
     next_before_id: null,
   });
 
-  const [isLoading, setIsLoading] =
-    useState(false);
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(false);
 
   const [
     isRegenerating,
@@ -104,10 +125,13 @@ function ChatPage() {
     setIsLoadingOlder,
   ] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [
+    error,
+    setError,
+  ] = useState("");
 
-  const chatContentRef = useRef(null);
+  const chatContentRef =
+    useRef(null);
 
   const shouldScrollToBottomRef =
     useRef(false);
@@ -169,7 +193,9 @@ function ChatPage() {
 
         setError("");
 
-        setIsLoadingConversation(true);
+        setIsLoadingConversation(
+          true
+        );
 
         try {
           const data =
@@ -198,7 +224,9 @@ function ChatPage() {
           shouldScrollToBottomRef.current =
             true;
 
-          setMessages(data.messages);
+          setMessages(
+            data.messages
+          );
 
           setPagination(
             data.pagination || {
@@ -213,8 +241,8 @@ function ChatPage() {
           );
 
           setError(
-            requestError.response
-              ?.data?.message ||
+            requestError.response?.data
+              ?.message ||
               "Unable to load this conversation."
           );
         } finally {
@@ -233,7 +261,9 @@ function ChatPage() {
 
   useEffect(() => {
     const bootstrap = async () => {
-      setIsLoadingConversations(true);
+      setIsLoadingConversations(
+        true
+      );
 
       try {
         const data =
@@ -255,7 +285,8 @@ function ChatPage() {
         );
 
         if (
-          data.conversations.length > 0
+          data.conversations.length >
+          0
         ) {
           await openConversation(
             data.conversations[0].id
@@ -273,76 +304,87 @@ function ChatPage() {
             "Unable to load conversations."
         );
       } finally {
-        setIsLoadingConversations(false);
+        setIsLoadingConversations(
+          false
+        );
       }
     };
 
     bootstrap();
   }, [openConversation]);
 
-  const handleNewChat = async () => {
-    if (
-      isCreatingConversation ||
-      isLoading ||
-      isRegenerating
-    ) {
-      return;
-    }
-
-    setIsCreatingConversation(true);
-    setError("");
-
-    try {
-      const data =
-        await createConversation();
-
+  const handleNewChat =
+    async () => {
       if (
-        !data.success ||
-        !data.conversation
+        isCreatingConversation ||
+        isLoading ||
+        isRegenerating
       ) {
-        throw new Error(
-          "Invalid conversation creation response."
-        );
+        return;
       }
 
-      const conversation =
-        data.conversation;
-
-      setConversations(
-        (currentConversations) => [
-          conversation,
-          ...currentConversations,
-        ]
+      setIsCreatingConversation(
+        true
       );
 
-      setActiveConversationId(
-        conversation.id
-      );
+      setError("");
 
-      setMessages([]);
+      try {
+        const data =
+          await createConversation();
 
-      setPagination({
-        has_more: false,
-        next_before_id: null,
-      });
+        if (
+          !data.success ||
+          !data.conversation
+        ) {
+          throw new Error(
+            "Invalid conversation creation response."
+          );
+        }
 
-      setDraft("");
-      setSidebarOpen(false);
-    } catch (requestError) {
-      console.error(
-        "Failed to create conversation:",
-        requestError
-      );
+        const conversation =
+          data.conversation;
 
-      setError(
-        requestError.response?.data
-          ?.message ||
-          "Unable to create a new conversation."
-      );
-    } finally {
-      setIsCreatingConversation(false);
-    }
-  };
+        setConversations(
+          (
+            currentConversations
+          ) => [
+            conversation,
+            ...currentConversations,
+          ]
+        );
+
+        setActiveConversationId(
+          conversation.id
+        );
+
+        setMessages([]);
+
+        setPagination({
+          has_more: false,
+          next_before_id: null,
+        });
+
+        setDraft("");
+
+        setSidebarOpen(false);
+      } catch (requestError) {
+        console.error(
+          "Failed to create conversation:",
+          requestError
+        );
+
+        setError(
+          requestError.response?.data
+            ?.message ||
+            "Unable to create a new conversation."
+        );
+      } finally {
+        setIsCreatingConversation(
+          false
+        );
+      }
+    };
 
   const loadOlderMessages =
     useCallback(async () => {
@@ -443,179 +485,186 @@ function ChatPage() {
     }
   };
 
-  const handleSubmit = async (
-    event
-  ) => {
-    event.preventDefault();
+  const handleSubmit =
+    async (event) => {
+      event.preventDefault();
 
-    const content =
-      draft.trim();
-
-    if (
-      !content ||
-      isLoading ||
-      isRegenerating
-    ) {
-      return;
-    }
-
-    let conversationId =
-      activeConversationId;
-
-    setError("");
-
-    if (!conversationId) {
-      try {
-        const creationData =
-          await createConversation();
-
-        if (
-          !creationData.success ||
-          !creationData.conversation
-        ) {
-          throw new Error(
-            "Unable to create conversation."
-          );
-        }
-
-        const newConversation =
-          creationData.conversation;
-
-        conversationId =
-          newConversation.id;
-
-        setActiveConversationId(
-          conversationId
-        );
-
-        setConversations(
-          (currentConversations) => [
-            newConversation,
-            ...currentConversations,
-          ]
-        );
-      } catch (requestError) {
-        console.error(
-          "Conversation creation failed:",
-          requestError
-        );
-
-        setError(
-          "Unable to create a conversation."
-        );
-
-        return;
-      }
-    }
-
-    const temporaryMessage = {
-      id: `temporary-${crypto.randomUUID()}`,
-      conversation_id:
-        conversationId,
-      role: "user",
-      content,
-      token_usage: null,
-      created_at:
-        new Date().toISOString(),
-      updated_at:
-        new Date().toISOString(),
-    };
-
-    shouldScrollToBottomRef.current =
-      true;
-
-    setMessages(
-      (currentMessages) => [
-        ...currentMessages,
-        temporaryMessage,
-      ]
-    );
-
-    setDraft("");
-    setIsLoading(true);
-
-    try {
-      const data =
-        await sendConversationMessage(
-          conversationId,
-          content
-        );
+      const content =
+        draft.trim();
 
       if (
-        !data.success ||
-        !data.user_message ||
-        !data.assistant_message
+        !content ||
+        isLoading ||
+        isRegenerating
       ) {
-        throw new Error(
-          "Invalid AI response."
-        );
+        return;
       }
+
+      let conversationId =
+        activeConversationId;
+
+      setError("");
+
+      if (!conversationId) {
+        try {
+          const creationData =
+            await createConversation();
+
+          if (
+            !creationData.success ||
+            !creationData.conversation
+          ) {
+            throw new Error(
+              "Unable to create conversation."
+            );
+          }
+
+          const newConversation =
+            creationData.conversation;
+
+          conversationId =
+            newConversation.id;
+
+          setActiveConversationId(
+            conversationId
+          );
+
+          setConversations(
+            (
+              currentConversations
+            ) => [
+              newConversation,
+              ...currentConversations,
+            ]
+          );
+        } catch (requestError) {
+          console.error(
+            "Conversation creation failed:",
+            requestError
+          );
+
+          setError(
+            "Unable to create a conversation."
+          );
+
+          return;
+        }
+      }
+
+      const temporaryMessage = {
+        id: `temporary-${crypto.randomUUID()}`,
+        conversation_id:
+          conversationId,
+        role: "user",
+        content,
+        token_usage: null,
+        created_at:
+          new Date().toISOString(),
+        updated_at:
+          new Date().toISOString(),
+      };
 
       shouldScrollToBottomRef.current =
         true;
 
       setMessages(
-        (currentMessages) => {
-          const withoutTemporary =
-            currentMessages.filter(
-              (message) =>
-                message.id !==
-                temporaryMessage.id
-            );
+        (currentMessages) => [
+          ...currentMessages,
+          temporaryMessage,
+        ]
+      );
 
-          return [
-            ...withoutTemporary,
-            data.user_message,
-            data.assistant_message,
-          ];
+      setDraft("");
+      setIsLoading(true);
+
+      try {
+        const data =
+          await sendConversationMessage(
+            conversationId,
+            content
+          );
+
+        if (
+          !data.success ||
+          !data.user_message ||
+          !data.assistant_message
+        ) {
+          throw new Error(
+            "Invalid AI response."
+          );
         }
-      );
 
-      if (data.conversation) {
-        updateConversationInList(
-          data.conversation
-        );
-      }
-    } catch (requestError) {
-      console.error(
-        "Chat request failed:",
-        requestError
-      );
+        shouldScrollToBottomRef.current =
+          true;
 
-      const status =
-        requestError.response?.status;
-
-      /*
-       * A 502 from our Laravel endpoint means the user
-       * message was normally stored before the AI call
-       * failed. Keep the message visible so Retry can
-       * regenerate the missing response.
-       *
-       * For a network/client error, remove the temporary
-       * message and restore the draft.
-       */
-      if (status !== 502) {
         setMessages(
-          (currentMessages) =>
-            currentMessages.filter(
-              (message) =>
-                message.id !==
-                temporaryMessage.id
-            )
+          (currentMessages) => {
+            const withoutTemporary =
+              currentMessages.filter(
+                (message) =>
+                  message.id !==
+                  temporaryMessage.id
+              );
+
+            return [
+              ...withoutTemporary,
+              data.user_message,
+              data.assistant_message,
+            ];
+          }
         );
 
-        setDraft(content);
-      }
+        if (data.conversation) {
+          updateConversationInList(
+            data.conversation
+          );
+        }
+      } catch (requestError) {
+        console.error(
+          "Chat request failed:",
+          requestError
+        );
 
-      setError(
-        requestError.response?.data
-          ?.message ||
-          "Unable to reach the AI assistant. Please try again."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        const status =
+          requestError.response
+            ?.status;
+
+        /*
+         * Laravel normally stores the user
+         * message before requesting an AI
+         * response.
+         *
+         * A 502 therefore means the message
+         * may already exist in MySQL.
+         * Keep the temporary message visible
+         * so Retry can recover it.
+         *
+         * For client/network failures,
+         * remove the temporary message and
+         * restore the user's draft.
+         */
+        if (status !== 502) {
+          setMessages(
+            (currentMessages) =>
+              currentMessages.filter(
+                (message) =>
+                  message.id !==
+                  temporaryMessage.id
+              )
+          );
+
+          setDraft(content);
+        }
+
+        setError(
+          requestError.response?.data
+            ?.message ||
+            "Unable to reach the AI assistant. Please try again."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
   const handleRegenerateResponse =
     async () => {
@@ -652,8 +701,9 @@ function ChatPage() {
         setMessages(
           (currentMessages) => {
             /*
-             * Remove any temporary user message that may
-             * remain after a failed AI request.
+             * Remove a temporary user
+             * message left after a failed
+             * AI response.
              */
             let nextMessages =
               currentMessages.filter(
@@ -683,14 +733,16 @@ function ChatPage() {
               nextMessages.findIndex(
                 (message) =>
                   message.id ===
-                  data.assistant_message.id
+                  data.assistant_message
+                    .id
               );
 
             if (
               assistantIndex >= 0
             ) {
-              nextMessages =
-                [...nextMessages];
+              nextMessages = [
+                ...nextMessages,
+              ];
 
               nextMessages[
                 assistantIndex
@@ -750,7 +802,9 @@ function ChatPage() {
         }
 
         setConversations(
-          (currentConversations) =>
+          (
+            currentConversations
+          ) =>
             currentConversations.map(
               (conversation) =>
                 conversation.id ===
@@ -816,8 +870,8 @@ function ChatPage() {
           conversationId
         ) {
           if (
-            remainingConversations.length >
-            0
+            remainingConversations
+              .length > 0
           ) {
             await openConversation(
               remainingConversations[0]
@@ -846,6 +900,70 @@ function ChatPage() {
           requestError.response?.data
             ?.message ||
             "Unable to delete the conversation."
+        );
+      }
+    };
+
+  /*
+   * Logout the current authenticated user.
+   *
+   * AuthContext calls Laravel's logout
+   * endpoint and clears the authenticated
+   * user from React state.
+   */
+  const handleLogout =
+    async () => {
+      if (
+        isLoading ||
+        isRegenerating ||
+        isCreatingConversation
+      ) {
+        return;
+      }
+
+      setError("");
+
+      try {
+        await logout();
+
+        /*
+         * Clear local chat state before
+         * navigating away.
+         */
+        conversationRequestRef.current +=
+          1;
+
+        setMessages([]);
+        setConversations([]);
+
+        setActiveConversationId(
+          null
+        );
+
+        setPagination({
+          has_more: false,
+          next_before_id: null,
+        });
+
+        setDraft("");
+        setSidebarOpen(false);
+
+        navigate(
+          "/login",
+          {
+            replace: true,
+          }
+        );
+      } catch (requestError) {
+        console.error(
+          "Logout failed:",
+          requestError
+        );
+
+        setError(
+          requestError.response?.data
+            ?.message ||
+            "Unable to log out. Please try again."
         );
       }
     };
@@ -927,7 +1045,9 @@ function ChatPage() {
         onClose={() =>
           setSidebarOpen(false)
         }
-        onNewChat={handleNewChat}
+        onNewChat={
+          handleNewChat
+        }
         conversations={
           conversations
         }
@@ -949,6 +1069,8 @@ function ChatPage() {
         isCreatingConversation={
           isCreatingConversation
         }
+        user={user}
+        onLogout={handleLogout}
       />
 
       {sidebarOpen && (
