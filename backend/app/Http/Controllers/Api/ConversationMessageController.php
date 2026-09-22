@@ -9,6 +9,7 @@ use App\Models\Conversation;
 use App\Services\Conversations\ConversationChatService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -20,33 +21,46 @@ class ConversationMessageController extends Controller
     }
 
     /**
-     * Return paginated conversation messages.
+     * Return paginated messages from an
+     * authenticated user's conversation.
      */
     public function index(
         ListMessagesRequest $request,
-        Conversation $conversation
+        $conversation
     ): JsonResponse {
-        $validated = $request->validated();
+        $conversationModel =
+            $this->findOwnedConversation(
+                $request,
+                $conversation
+            );
+
+        $validated =
+            $request->validated();
 
         $limit = (int) (
             $validated['limit']
-            ?? config('chat.message_page_size', 20)
+            ?? config(
+                'chat.message_page_size',
+                20
+            )
         );
 
         $beforeId =
-            $validated['before_id'] ?? null;
+            $validated['before_id']
+            ?? null;
 
-        $query = $conversation
-            ->messages()
-            ->select([
-                'id',
-                'conversation_id',
-                'role',
-                'content',
-                'token_usage',
-                'created_at',
-                'updated_at',
-            ]);
+        $query =
+            $conversationModel
+                ->messages()
+                ->select([
+                    'id',
+                    'conversation_id',
+                    'role',
+                    'content',
+                    'token_usage',
+                    'created_at',
+                    'updated_at',
+                ]);
 
         if ($beforeId !== null) {
             $query->where(
@@ -62,16 +76,20 @@ class ConversationMessageController extends Controller
             ->get();
 
         $hasMore =
-            $messages->count() > $limit;
+            $messages->count() >
+            $limit;
 
         if ($hasMore) {
             $messages =
-                $messages->take($limit);
+                $messages->take(
+                    $limit
+                );
         }
 
-        $messages = $messages
-            ->reverse()
-            ->values();
+        $messages =
+            $messages
+                ->reverse()
+                ->values();
 
         $oldestMessage =
             $messages->first();
@@ -79,48 +97,64 @@ class ConversationMessageController extends Controller
         return response()->json([
             'success' => true,
 
-            'messages' => $messages,
+            'messages' =>
+                $messages,
 
             'pagination' => [
-                'has_more' => $hasMore,
+                'has_more' =>
+                    $hasMore,
 
-                'next_before_id' => (
+                'next_before_id' =>
                     $hasMore &&
                     $oldestMessage
-                        ? $oldestMessage->id
-                        : null
-                ),
+                        ? $oldestMessage
+                            ->id
+                        : null,
 
-                'limit' => $limit,
+                'limit' =>
+                    $limit,
             ],
         ]);
     }
 
     /**
-     * Store a new user message and generate an AI response.
+     * Store a message and generate an AI
+     * response inside an owned conversation.
      */
     public function store(
         SendMessageRequest $request,
-        Conversation $conversation
+        $conversation
     ): JsonResponse {
-        try {
-            $result = $this
-                ->conversationChatService
-                ->sendMessage(
-                    $conversation,
-                    $request->validated('message')
-                );
+        $conversationModel =
+            $this->findOwnedConversation(
+                $request,
+                $conversation
+            );
 
-            $conversation->refresh();
+        try {
+            $result =
+                $this
+                    ->conversationChatService
+                    ->sendMessage(
+                        $conversationModel,
+                        $request->validated(
+                            'message'
+                        )
+                    );
+
+            $conversationModel
+                ->refresh();
 
             return response()->json([
                 'success' => true,
 
                 'conversation' =>
-                    $conversation,
+                    $conversationModel,
 
                 'user_message' =>
-                    $result['user_message'],
+                    $result[
+                        'user_message'
+                    ],
 
                 'assistant_message' =>
                     $result[
@@ -132,13 +166,20 @@ class ConversationMessageController extends Controller
                 'Conversation AI request failed.',
                 [
                     'conversation_id' =>
-                        $conversation->id,
+                        $conversationModel
+                            ->id,
+
+                    'user_id' =>
+                        $request
+                            ->user()
+                            ->id,
 
                     'exception' =>
                         $exception::class,
 
                     'message' =>
-                        $exception->getMessage(),
+                        $exception
+                            ->getMessage(),
                 ]
             );
 
@@ -152,30 +193,44 @@ class ConversationMessageController extends Controller
     }
 
     /**
-     * Regenerate or retry the latest assistant response.
+     * Regenerate or retry the latest response
+     * only inside the authenticated user's
+     * conversation.
      */
     public function regenerate(
-        Conversation $conversation
+        Request $request,
+        $conversation
     ): JsonResponse {
-        try {
-            $result = $this
-                ->conversationChatService
-                ->regenerateLatestResponse(
-                    $conversation
-                );
+        $conversationModel =
+            $this->findOwnedConversation(
+                $request,
+                $conversation
+            );
 
-            $conversation->refresh();
+        try {
+            $result =
+                $this
+                    ->conversationChatService
+                    ->regenerateLatestResponse(
+                        $conversationModel
+                    );
+
+            $conversationModel
+                ->refresh();
 
             return response()->json([
                 'success' => true,
 
-                'mode' => $result['mode'],
+                'mode' =>
+                    $result['mode'],
 
                 'conversation' =>
-                    $conversation,
+                    $conversationModel,
 
                 'user_message' =>
-                    $result['user_message'],
+                    $result[
+                        'user_message'
+                    ],
 
                 'assistant_message' =>
                     $result[
@@ -185,21 +240,30 @@ class ConversationMessageController extends Controller
         } catch (DomainException $exception) {
             return response()->json([
                 'success' => false,
+
                 'message' =>
-                    $exception->getMessage(),
+                    $exception
+                        ->getMessage(),
             ], 422);
         } catch (Throwable $exception) {
             Log::error(
                 'AI response regeneration failed.',
                 [
                     'conversation_id' =>
-                        $conversation->id,
+                        $conversationModel
+                            ->id,
+
+                    'user_id' =>
+                        $request
+                            ->user()
+                            ->id,
 
                     'exception' =>
                         $exception::class,
 
                     'message' =>
-                        $exception->getMessage(),
+                        $exception
+                            ->getMessage(),
                 ]
             );
 
@@ -210,5 +274,23 @@ class ConversationMessageController extends Controller
                     'The AI response could not be generated. Please try again.',
             ], 502);
         }
+    }
+
+    /**
+     * Resolve a conversation only through
+     * the authenticated user's relationship.
+     *
+     * A conversation belonging to another
+     * user therefore behaves as not found.
+     */
+    private function findOwnedConversation(
+        Request $request,
+        $conversationId
+    ): Conversation {
+        return $request
+            ->user()
+            ->conversations()
+            ->whereKey($conversationId)
+            ->firstOrFail();
     }
 }
