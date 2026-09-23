@@ -80,8 +80,46 @@ function Sidebar({
     setEditingTitle,
   ] = useState("");
 
+  const [
+    isSearchOpen,
+    setIsSearchOpen,
+  ] = useState(false);
+
+  const [
+    searchQuery,
+    setSearchQuery,
+  ] = useState("");
+
+  /*
+   * Search is case-insensitive and currently
+   * searches conversation titles.
+   */
+  const normalizedSearch =
+    searchQuery
+      .trim()
+      .toLowerCase();
+
+  const filteredConversations =
+    normalizedSearch
+      ? conversations.filter(
+          (conversation) => {
+            const title =
+              conversation.title ||
+              "New conversation";
+
+            return title
+              .toLowerCase()
+              .includes(
+                normalizedSearch
+              );
+          }
+        )
+      : conversations;
+
   const groups =
-    groupConversations(conversations);
+    groupConversations(
+      filteredConversations
+    );
 
   const handleConversationClick = (
     conversationId
@@ -179,11 +217,36 @@ function Sidebar({
     );
   };
 
+  const openSearch = () => {
+    setIsSearchOpen(true);
+    setMenuConversationId(null);
+  };
+
+  const closeSearch = () => {
+    setSearchQuery("");
+    setIsSearchOpen(false);
+  };
+
+  const handleSearchKeyDown = (
+    event
+  ) => {
+    if (event.key === "Escape") {
+      closeSearch();
+    }
+  };
+
   const userInitial =
     user?.name
       ?.trim()
       ?.charAt(0)
       ?.toUpperCase() || "U";
+
+  const hasConversations =
+    conversations.length > 0;
+
+  const hasSearchResults =
+    filteredConversations.length >
+    0;
 
   return (
     <aside
@@ -248,16 +311,53 @@ function Sidebar({
           </span>
         </button>
 
-        <button
-          className="sidebar-search"
-          type="button"
-        >
-          <Search size={16} />
+        {isSearchOpen ? (
+          <div className="sidebar-search-box">
+            <Search
+              className="sidebar-search-icon"
+              size={16}
+            />
 
-          <span>
-            Search conversations
-          </span>
-        </button>
+            <input
+              className="sidebar-search-input"
+              type="text"
+              value={searchQuery}
+              placeholder="Search conversations..."
+              aria-label="Search conversations"
+              autoFocus
+              onChange={(event) =>
+                setSearchQuery(
+                  event.target.value
+                )
+              }
+              onKeyDown={
+                handleSearchKeyDown
+              }
+            />
+
+            <button
+              className="sidebar-search-close"
+              type="button"
+              aria-label="Close conversation search"
+              title="Close search"
+              onClick={closeSearch}
+            >
+              <X size={15} />
+            </button>
+          </div>
+        ) : (
+          <button
+            className="sidebar-search"
+            type="button"
+            onClick={openSearch}
+          >
+            <Search size={16} />
+
+            <span>
+              Search conversations
+            </span>
+          </button>
+        )}
       </div>
 
       <div className="conversation-scroll">
@@ -272,7 +372,7 @@ function Sidebar({
               Loading conversations...
             </span>
           </div>
-        ) : groups.length === 0 ? (
+        ) : !hasConversations ? (
           <div className="sidebar-empty-state">
             <MessageSquareText
               size={20}
@@ -286,6 +386,34 @@ function Sidebar({
               Start a new conversation
               to begin.
             </small>
+          </div>
+        ) : (
+          isSearchOpen &&
+          !hasSearchResults
+        ) ? (
+          <div className="sidebar-search-empty">
+            <Search size={20} />
+
+            <span>
+              No conversations found
+            </span>
+
+            <small>
+              No titles match
+              {searchQuery.trim()
+                ? ` "${searchQuery.trim()}"`
+                : " your search"}
+              .
+            </small>
+
+            <button
+              type="button"
+              onClick={() =>
+                setSearchQuery("")
+              }
+            >
+              Clear search
+            </button>
           </div>
         ) : (
           groups.map((group) => (
