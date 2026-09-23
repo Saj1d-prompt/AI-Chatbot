@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\ConversationMessageController;
 use Illuminate\Support\Facades\Route;
@@ -29,12 +28,12 @@ Route::prefix('auth')->group(function () {
     Route::post(
         '/register',
         [AuthController::class, 'register']
-    );
+    )->middleware('throttle:register');
 
     Route::post(
         '/login',
         [AuthController::class, 'login']
-    );
+    )->middleware('throttle:login');
 
     Route::middleware('auth:sanctum')
         ->group(function () {
@@ -52,27 +51,18 @@ Route::prefix('auth')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Temporary AI Provider Test Endpoint
-|--------------------------------------------------------------------------
-|
-| This endpoint currently remains available for development/provider
-| testing. The real frontend uses the conversation endpoints below.
-|
-*/
-
-Route::post(
-    '/chat',
-    [ChatController::class, 'store']
-);
-
-/*
-|--------------------------------------------------------------------------
 | Authenticated Conversation API
 |--------------------------------------------------------------------------
 */
 
 Route::middleware('auth:sanctum')
     ->group(function () {
+        /*
+        |--------------------------------------------------------------------------
+        | Conversations
+        |--------------------------------------------------------------------------
+        */
+
         Route::get(
             '/conversations',
             [ConversationController::class, 'index']
@@ -98,18 +88,34 @@ Route::middleware('auth:sanctum')
             [ConversationController::class, 'destroy']
         );
 
+        /*
+        |--------------------------------------------------------------------------
+        | Conversation Messages
+        |--------------------------------------------------------------------------
+        */
+
         Route::get(
             '/conversations/{conversation}/messages',
             [ConversationMessageController::class, 'index']
         );
 
+        /*
+        |--------------------------------------------------------------------------
+        | AI Generation
+        |--------------------------------------------------------------------------
+        |
+        | These endpoints call the AI provider, so they use the dedicated
+        | AI rate limiter to help prevent abuse and unnecessary usage.
+        |
+        */
+
         Route::post(
             '/conversations/{conversation}/messages',
             [ConversationMessageController::class, 'store']
-        );
+        )->middleware('throttle:ai');
 
         Route::post(
             '/conversations/{conversation}/regenerate',
             [ConversationMessageController::class, 'regenerate']
-        );
+        )->middleware('throttle:ai');
     });
