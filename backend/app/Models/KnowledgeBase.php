@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class KnowledgeBase extends Model
 {
-    //
-    
+    protected $fillable = [
+        'test',
+    ];
 }
