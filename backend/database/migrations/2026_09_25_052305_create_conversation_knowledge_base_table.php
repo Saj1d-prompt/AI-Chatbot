@@ -23,10 +23,13 @@ return new class extends Migration
 
                 $table->timestamps();
 
-                $table->unique([
-                    'conversation_id',
-                    'knowledge_base_id',
-                ]);
+                $table->unique(
+                    [
+                        'conversation_id',
+                        'knowledge_base_id',
+                    ],
+                    'conversation_kb_unique'
+                );
             }
         );
     }
