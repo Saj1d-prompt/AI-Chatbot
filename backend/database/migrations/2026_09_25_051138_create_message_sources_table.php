@@ -6,20 +6,40 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('message_sources', function (Blueprint $table) {
             $table->id();
+
+            $table->foreignId('message_id')
+                ->constrained()
+                ->cascadeOnDelete();
+
+            $table->foreignId('document_chunk_id')
+                ->constrained()
+                ->cascadeOnDelete();
+
+            $table->decimal(
+                'score',
+                8,
+                6
+            )->nullable();
+
+            $table->unsignedInteger('rank')
+                ->nullable();
+
             $table->timestamps();
+
+            $table->index('message_id');
+            $table->index('document_chunk_id');
+
+            $table->unique([
+                'message_id',
+                'document_chunk_id',
+            ]);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('message_sources');
