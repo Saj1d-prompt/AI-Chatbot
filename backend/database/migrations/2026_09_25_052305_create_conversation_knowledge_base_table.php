@@ -6,22 +6,35 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('conversation_knowledge_base', function (Blueprint $table) {
-            $table->id();
-            $table->timestamps();
-        });
+        Schema::create(
+            'conversation_knowledge_base',
+            function (Blueprint $table) {
+                $table->id();
+
+                $table->foreignId('conversation_id')
+                    ->constrained()
+                    ->cascadeOnDelete();
+
+                $table->foreignId('knowledge_base_id')
+                    ->constrained()
+                    ->cascadeOnDelete();
+
+                $table->timestamps();
+
+                $table->unique([
+                    'conversation_id',
+                    'knowledge_base_id',
+                ]);
+            }
+        );
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('conversation_knowledge_base');
+        Schema::dropIfExists(
+            'conversation_knowledge_base'
+        );
     }
 };
