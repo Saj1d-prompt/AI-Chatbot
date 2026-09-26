@@ -35,4 +35,11 @@ class User extends Authenticatable
     {
         return $this->hasMany(Conversation::class);
     }
+
+    public function knowledgeBases(): HasMany
+    {
+        return $this->hasMany(
+            KnowledgeBase::class
+        );
+    }
 }
