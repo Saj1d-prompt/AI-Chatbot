@@ -181,4 +181,35 @@ Route::middleware('auth:sanctum')
             [ConversationMessageController::class, 'regenerate']
         )->middleware('throttle:ai');
 
+    
+        /*
+        |--------------------------------------------------------------------------
+        | Knowledge Bases
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            '/knowledge-bases',
+            [KnowledgeBaseController::class, 'index']
+        );
+
+        Route::post(
+            '/knowledge-bases',
+            [KnowledgeBaseController::class, 'store']
+        );
+
+        Route::get(
+            '/knowledge-bases/{knowledgeBase}',
+            [KnowledgeBaseController::class, 'show']
+        );
+
+        Route::patch(
+            '/knowledge-bases/{knowledgeBase}',
+            [KnowledgeBaseController::class, 'update']
+        );
+
+        Route::delete(
+            '/knowledge-bases/{knowledgeBase}',
+            [KnowledgeBaseController::class, 'destroy']
+        );
     });
