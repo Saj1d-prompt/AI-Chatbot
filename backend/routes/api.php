@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\ConversationMessageController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\KnowledgeBaseController;
+use App\Http\Controllers\Api\DocumentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -211,5 +212,16 @@ Route::middleware('auth:sanctum')
         Route::delete(
             '/knowledge-bases/{knowledgeBase}',
             [KnowledgeBaseController::class, 'destroy']
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Knowledge Base Documents
+        |--------------------------------------------------------------------------
+        */
+
+        Route::post(
+            '/knowledge-bases/{knowledgeBase}/documents',
+            [DocumentController::class, 'store']
         );
     });
