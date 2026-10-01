@@ -21,5 +21,4 @@ return [
         'RAG_CHUNK_OVERLAP',
         50
     ),
-
 ];
