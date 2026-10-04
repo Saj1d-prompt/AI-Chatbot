@@ -45,6 +45,10 @@ return [
             'OLLAMA_EMBEDDING_MODEL',
             'nomic-embed-text'
         ),
+        'timeout' => env(
+            'OLLAMA_TIMEOUT',
+            60
+        ),
     ],
 
 ];
