@@ -2,74 +2,78 @@
 
 namespace App\Services;
 
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use InvalidArgumentException;
 use RuntimeException;
 
 class EmbeddingService
 {
+    /**
+     * Generate an embedding vector for the given text.
+     *
+     * @return array<int, float>
+     */
     public function embed(string $text): array
     {
         $text = trim($text);
 
         if ($text === '') {
-            throw new RuntimeException(
-                'Cannot generate an embedding for empty text.'
+            throw new InvalidArgumentException(
+                'Text cannot be empty when generating an embedding.'
             );
         }
 
-        try {
-            $response = Http::timeout(60)
-                ->post(
-                    rtrim(
-                        config('services.ollama.base_url'),
-                        '/'
-                    ) . '/api/embed',
-                    [
-                        'model' => config(
-                            'services.ollama.embedding_model'
-                        ),
-                        'input' => $text,
-                    ]
-                );
-        } catch (ConnectionException $exception) {
-            throw new RuntimeException(
-                'Unable to connect to the Ollama embedding service.',
-                0,
-                $exception
-            );
-        }
+        $baseUrl = rtrim(
+            (string) config(
+                'services.ollama.url',
+                'http://127.0.0.1:11434'
+            ),
+            '/'
+        );
+
+        $model = (string) config(
+            'services.ollama.embedding_model',
+            'nomic-embed-text'
+        );
+
+        $timeout = (int) config(
+            'services.ollama.timeout',
+            60
+        );
+
+        $response = Http::baseUrl($baseUrl)
+            ->acceptJson()
+            ->timeout($timeout)
+            ->post('/api/embed', [
+                'model' => $model,
+                'input' => $text,
+            ]);
 
         if ($response->failed()) {
+            $error = $response->json('error');
+
             throw new RuntimeException(
-                'Ollama embedding request failed: '
-                . $response->body()
+                'Ollama embedding request failed. '
+                . 'HTTP status: '
+                . $response->status()
+                . (
+                    $error
+                        ? ' Error: ' . $error
+                        : ''
+                )
             );
         }
 
-        $embeddings = $response->json('embeddings');
+        $embedding = $response->json('embeddings.0');
 
-        if (
-            !is_array($embeddings) ||
-            !isset($embeddings[0]) ||
-            !is_array($embeddings[0])
-        ) {
+        if (!is_array($embedding) || $embedding === []) {
             throw new RuntimeException(
                 'Ollama returned an invalid embedding response.'
             );
         }
 
-        $embedding = $embeddings[0];
-
-        if (count($embedding) !== 768) {
-            throw new RuntimeException(
-                'Unexpected embedding dimension: '
-                . count($embedding)
-            );
-        }
-
         return array_map(
-            static fn ($value) => (float) $value,
+            static fn ($value): float => (float) $value,
             $embedding
         );
     }
