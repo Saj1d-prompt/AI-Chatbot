@@ -3,6 +3,7 @@
 namespace App\Services\RAG;
 
 use App\Models\Document;
+use App\Services\EmbeddingService;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -11,6 +12,7 @@ class DocumentProcessingService
     public function __construct(
         private TextExtractionService $textExtractionService,
         private TextChunkingService $textChunkingService,
+        private EmbeddingService $embeddingService,
     ) {
     }
 
@@ -36,9 +38,39 @@ class DocumentProcessingService
                 );
             }
 
+            /*
+             * Generate embeddings before opening the database
+             * transaction.
+             *
+             * Embedding generation is an external operation
+             * handled by Ollama, so we should not keep a
+             * database transaction open while waiting for it.
+             */
+            $embeddedChunks = [];
+
+            foreach ($chunks as $chunk) {
+                $embedding = $this
+                    ->embeddingService
+                    ->embed($chunk['content']);
+
+                $embeddedChunks[] = [
+                    'chunk_index' =>
+                        $chunk['chunk_index'],
+
+                    'content' =>
+                        $chunk['content'],
+
+                    'token_count' =>
+                        $chunk['token_count'],
+
+                    'embedding' =>
+                        $embedding,
+                ];
+            }
+
             DB::transaction(function () use (
                 $document,
-                $chunks
+                $embeddedChunks
             ) {
                 /*
                  * Remove any previous chunks.
@@ -49,7 +81,7 @@ class DocumentProcessingService
                     ->chunks()
                     ->delete();
 
-                foreach ($chunks as $chunk) {
+                foreach ($embeddedChunks as $chunk) {
                     $document
                         ->chunks()
                         ->create([
@@ -62,10 +94,8 @@ class DocumentProcessingService
                             'token_count' =>
                                 $chunk['token_count'],
 
-                            /*
-                             * Embeddings come later.
-                             */
-                            'embedding' => null,
+                            'embedding' =>
+                                $chunk['embedding'],
                         ]);
                 }
 
