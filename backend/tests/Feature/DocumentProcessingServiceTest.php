@@ -26,28 +26,25 @@ class DocumentProcessingServiceTest extends TestCase
         ]);
 
         /*
-         * Do not call the real Ollama server during tests.
+         * Mock the real EmbeddingService.
          *
-         * Replace EmbeddingService with a deterministic
-         * fake that returns a 768-dimensional vector.
+         * The document contains 3 chunks, so embedding()
+         * must be called exactly 3 times.
          */
-        $this->app->instance(
-            EmbeddingService::class,
-            new class {
-                /**
-                 * @return array<int, float>
-                 */
-                public function embed(
-                    string $text
-                ): array {
-                    return array_fill(
-                        0,
-                        768,
-                        0.1
-                    );
-                }
-            }
+        $embeddingService = $this->mock(
+            EmbeddingService::class
         );
+
+        $embeddingService
+            ->shouldReceive('embed')
+            ->times(3)
+            ->andReturn(
+                array_fill(
+                    0,
+                    768,
+                    0.1
+                )
+            );
 
         $user = User::factory()->create();
 
@@ -259,20 +256,21 @@ class DocumentProcessingServiceTest extends TestCase
         ]);
 
         /*
-         * Simulate an Ollama/embedding failure.
+         * Mock the real EmbeddingService and simulate
+         * an embedding-generation failure.
          */
-        $this->app->instance(
-            EmbeddingService::class,
-            new class {
-                public function embed(
-                    string $text
-                ): array {
-                    throw new RuntimeException(
-                        'Embedding generation failed.'
-                    );
-                }
-            }
+        $embeddingService = $this->mock(
+            EmbeddingService::class
         );
+
+        $embeddingService
+            ->shouldReceive('embed')
+            ->once()
+            ->andThrow(
+                new RuntimeException(
+                    'Embedding generation failed.'
+                )
+            );
 
         $user = User::factory()->create();
 
