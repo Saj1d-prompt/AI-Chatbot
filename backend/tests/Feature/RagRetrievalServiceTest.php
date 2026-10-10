@@ -14,6 +14,7 @@ use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use Mockery;
 use Tests\TestCase;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 class RagRetrievalServiceTest extends TestCase
 {
@@ -61,7 +62,7 @@ class RagRetrievalServiceTest extends TestCase
                 0.0
             )
             ->andReturn(
-                new Collection([$chunk])
+                new EloquentCollection([$chunk])
             );
 
         $service = app(
@@ -110,7 +111,7 @@ class RagRetrievalServiceTest extends TestCase
             ->shouldReceive('search')
             ->once()
             ->andReturn(
-                new Collection()
+                new EloquentCollection()
             );
 
         $service = app(
