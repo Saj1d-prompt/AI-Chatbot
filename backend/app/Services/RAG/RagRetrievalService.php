@@ -5,7 +5,7 @@ namespace App\Services\RAG;
 use App\Models\DocumentChunk;
 use App\Services\EmbeddingService;
 use App\Services\VectorSearchService;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use InvalidArgumentException;
 
 class RagRetrievalService
@@ -20,14 +20,14 @@ class RagRetrievalService
      * Retrieve the most relevant document chunks
      * for a question within a knowledge base.
      *
-     * @return Collection<int, DocumentChunk>
+     * @return EloquentCollection<int, DocumentChunk>
      */
     public function retrieve(
         string $question,
         int $knowledgeBaseId,
         int $limit = 5,
         float $minimumScore = 0.0
-    ): Collection {
+    ): EloquentCollection {
         $question = trim($question);
 
         if ($question === '') {
@@ -57,17 +57,10 @@ class RagRetrievalService
             );
         }
 
-        /*
-         * Convert the user's question into an embedding.
-         */
         $questionEmbedding = $this
             ->embeddingService
             ->embed($question);
 
-        /*
-         * Find the most similar chunks belonging
-         * to the requested knowledge base.
-         */
         $chunks = $this
             ->vectorSearchService
             ->search(
@@ -78,10 +71,17 @@ class RagRetrievalService
             );
 
         /*
-         * Load document details so the caller can
-         * display source information later.
+         * VectorSearchService returns a support Collection.
+         * Convert its DocumentChunk models into an Eloquent
+         * collection before loading document relationships.
          */
-        $chunks->load('document');
+        $chunks = new EloquentCollection(
+            $chunks->all()
+        );
+
+        if ($chunks->isNotEmpty()) {
+            $chunks->load('document');
+        }
 
         return $chunks;
     }
