@@ -130,7 +130,6 @@ class RagRetrievalServiceTest extends TestCase
 
         $this->assertCount(0, $results);
     }
-
     public function test_it_rejects_an_empty_question(): void
     {
         $this->expectException(
@@ -170,7 +169,6 @@ class RagRetrievalServiceTest extends TestCase
             knowledgeBaseId: 0,
         );
     }
-
     public function test_it_rejects_an_invalid_result_limit(): void
     {
         $this->expectException(
