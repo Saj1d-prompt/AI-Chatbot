@@ -6,7 +6,6 @@ use App\Models\DocumentChunk;
 use App\Services\EmbeddingService;
 use App\Services\VectorSearchService;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Support\Collection;
 use InvalidArgumentException;
 
 class RagRetrievalService
@@ -27,6 +26,12 @@ class RagRetrievalService
         int $limit = 5,
         float $minimumScore = 0.0
     ): EloquentCollection {
+        if ($knowledgeBaseId < 1) {
+            throw new InvalidArgumentException(
+                'Knowledge base ID must be valid.'
+            );
+        }
+
         return $this->retrieveFromKnowledgeBases(
             question: $question,
             knowledgeBaseIds: [$knowledgeBaseId],
@@ -37,6 +42,9 @@ class RagRetrievalService
 
     /**
      * Retrieve and globally rank chunks across multiple knowledge bases.
+     *
+     * The question embedding is generated once and reused for every
+     * knowledge base.
      *
      * @param array<int, int> $knowledgeBaseIds
      * @return EloquentCollection<int, DocumentChunk>
@@ -61,7 +69,10 @@ class RagRetrievalService
             );
         }
 
-        if ($minimumScore < -1.0 || $minimumScore > 1.0) {
+        if (
+            $minimumScore < -1.0 ||
+            $minimumScore > 1.0
+        ) {
             throw new InvalidArgumentException(
                 'Minimum similarity score must be between -1 and 1.'
             );
@@ -76,7 +87,7 @@ class RagRetrievalService
         foreach ($knowledgeBaseIds as $knowledgeBaseId) {
             if ($knowledgeBaseId < 1) {
                 throw new InvalidArgumentException(
-                    'Knowledge base IDs must be valid.'
+                    'Knowledge base ID must be valid.'
                 );
             }
         }
@@ -93,17 +104,17 @@ class RagRetrievalService
         $allChunks = collect();
 
         foreach ($knowledgeBaseIds as $knowledgeBaseId) {
-            // Fetch enough candidates to rank across all selected bases.
             $chunks = $this->vectorSearchService->search(
                 queryEmbedding: $questionEmbedding,
                 knowledgeBaseId: $knowledgeBaseId,
-                limit: PHP_INT_MAX,
+                limit: $limit,
                 minimumScore: $minimumScore,
             );
 
             $allChunks = $allChunks->concat($chunks);
         }
 
+        // Merge candidates and rank them across all knowledge bases.
         $rankedChunks = $allChunks
             ->sortByDesc('similarity_score')
             ->take($limit)
