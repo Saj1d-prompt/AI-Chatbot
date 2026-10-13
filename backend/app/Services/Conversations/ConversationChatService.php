@@ -3,23 +3,23 @@
 namespace App\Services\Conversations;
 
 use App\Models\Conversation;
+use App\Models\DocumentChunk;
 use App\Models\Message;
 use App\Services\AI\ChatService;
+use App\Services\RAG\RagRetrievalService;
 use DomainException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class ConversationChatService
 {
     public function __construct(
-        private readonly ChatService $chatService
-    ) {
-    }
+        private readonly ChatService $chatService,
+        private readonly RagRetrievalService $ragRetrievalService,
+    ) {}
 
     /**
-     * Store a new user message and generate its AI response.
-     *
-     * Every message remains stored in MySQL.
-     * Only a limited recent context is sent to the AI.
+     * Store a user message and generate its AI response.
      *
      * @return array{
      *     user_message: Message,
@@ -30,24 +30,10 @@ class ConversationChatService
         Conversation $conversation,
         string $content
     ): array {
-        /*
-        |--------------------------------------------------------------------------
-        | Store User Message
-        |--------------------------------------------------------------------------
-        */
-
-        $userMessage = $conversation
-            ->messages()
-            ->create([
-                'role' => 'user',
-                'content' => $content,
-            ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Generate Initial Conversation Title
-        |--------------------------------------------------------------------------
-        */
+        $userMessage = $conversation->messages()->create([
+            'role' => 'user',
+            'content' => $content,
+        ]);
 
         if (blank($conversation->title)) {
             $title = Str::of($content)
@@ -61,39 +47,29 @@ class ConversationChatService
             ]);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Build Context Ending At This User Message
-        |--------------------------------------------------------------------------
-        */
-
         $history = $this->buildContext(
             $conversation,
             $userMessage->id
         );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Generate AI Reply
-        |--------------------------------------------------------------------------
-        */
+        // Retrieve context from the conversation's attached knowledge bases.
+        [$ragContext, $chunks] = $this->retrieveKnowledge(
+            $conversation,
+            $content
+        );
 
-        $reply = $this
-            ->chatService
-            ->generateReply($history);
+        $reply = $this->chatService->generateReply(
+            $history,
+            $ragContext
+        );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Store Assistant Message
-        |--------------------------------------------------------------------------
-        */
+        $assistantMessage = $conversation->messages()->create([
+            'role' => 'assistant',
+            'content' => $reply,
+        ]);
 
-        $assistantMessage = $conversation
-            ->messages()
-            ->create([
-                'role' => 'assistant',
-                'content' => $reply,
-            ]);
+        // Save source references only after the assistant reply is created.
+        $this->saveSources($assistantMessage, $chunks);
 
         $conversation->touch();
 
@@ -106,10 +82,6 @@ class ConversationChatService
     /**
      * Regenerate the latest AI response.
      *
-     * If the latest stored message is a user message, this acts as a retry.
-     * If the latest stored message is an assistant message, that assistant
-     * response is replaced instead of creating a duplicate user message.
-     *
      * @return array{
      *     mode: string,
      *     user_message: Message,
@@ -119,8 +91,7 @@ class ConversationChatService
     public function regenerateLatestResponse(
         Conversation $conversation
     ): array {
-        $latestMessage = $conversation
-            ->messages()
+        $latestMessage = $conversation->messages()
             ->orderByDesc('id')
             ->first();
 
@@ -132,28 +103,13 @@ class ConversationChatService
 
         $existingAssistantMessage = null;
 
-        /*
-        |--------------------------------------------------------------------------
-        | Determine Which User Message We Are Answering
-        |--------------------------------------------------------------------------
-        */
-
         if ($latestMessage->role === 'user') {
-            /*
-             * The previous AI call may have failed.
-             * The user message already exists, so retry it.
-             */
-
+            // Retry a user message whose previous AI call failed.
             $userMessage = $latestMessage;
         } elseif ($latestMessage->role === 'assistant') {
-            /*
-             * Regenerate the latest successful response.
-             */
-
             $existingAssistantMessage = $latestMessage;
 
-            $userMessage = $conversation
-                ->messages()
+            $userMessage = $conversation->messages()
                 ->where('id', '<', $latestMessage->id)
                 ->where('role', 'user')
                 ->orderByDesc('id')
@@ -170,35 +126,21 @@ class ConversationChatService
             );
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Build Context Up To The Target User Message
-        |--------------------------------------------------------------------------
-        |
-        | Notice that the previous assistant response is excluded.
-        |
-        */
-
+        // Exclude the existing assistant answer from the new AI context.
         $history = $this->buildContext(
             $conversation,
             $userMessage->id
         );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Generate Fresh Response
-        |--------------------------------------------------------------------------
-        */
+        [$ragContext, $chunks] = $this->retrieveKnowledge(
+            $conversation,
+            $userMessage->content
+        );
 
-        $reply = $this
-            ->chatService
-            ->generateReply($history);
-
-        /*
-        |--------------------------------------------------------------------------
-        | Replace Existing Assistant Or Create Missing One
-        |--------------------------------------------------------------------------
-        */
+        $reply = $this->chatService->generateReply(
+            $history,
+            $ragContext
+        );
 
         if ($existingAssistantMessage) {
             $existingAssistantMessage->update([
@@ -206,20 +148,22 @@ class ConversationChatService
                 'token_usage' => null,
             ]);
 
-            $assistantMessage =
-                $existingAssistantMessage->fresh();
+            $assistantMessage = $existingAssistantMessage->fresh();
+
+            // Remove old references before storing the newly retrieved ones.
+            $assistantMessage->sources()->delete();
 
             $mode = 'replaced';
         } else {
-            $assistantMessage = $conversation
-                ->messages()
-                ->create([
-                    'role' => 'assistant',
-                    'content' => $reply,
-                ]);
+            $assistantMessage = $conversation->messages()->create([
+                'role' => 'assistant',
+                'content' => $reply,
+            ]);
 
             $mode = 'created';
         }
+
+        $this->saveSources($assistantMessage, $chunks);
 
         $conversation->touch();
 
@@ -228,6 +172,95 @@ class ConversationChatService
             'user_message' => $userMessage,
             'assistant_message' => $assistantMessage,
         ];
+    }
+
+    /**
+     * Retrieve relevant chunks from knowledge bases attached to this
+     * conversation and owned by its user.
+     *
+     * @return array{0: ?string, 1: Collection<int, DocumentChunk>}
+     */
+    private function retrieveKnowledge(
+        Conversation $conversation,
+        string $question
+    ): array {
+        $knowledgeBaseIds = $conversation->knowledgeBases()
+            ->where(
+                'knowledge_bases.user_id',
+                $conversation->user_id
+            )
+            ->pluck('knowledge_bases.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($knowledgeBaseIds === []) {
+            return [null, collect()];
+        }
+
+        $limit = max(
+            1,
+            (int) config('rag.retrieval_limit', 5)
+        );
+
+        $minimumScore = (float) config(
+            'rag.minimum_score',
+            0.0
+        );
+
+        $chunks = $this->ragRetrievalService
+            ->retrieveFromKnowledgeBases(
+                question: $question,
+                knowledgeBaseIds: $knowledgeBaseIds,
+                limit: $limit,
+                minimumScore: $minimumScore,
+            );
+
+        if ($chunks->isEmpty()) {
+            return [null, collect()];
+        }
+
+        $contextParts = [];
+
+        foreach ($chunks as $index => $chunk) {
+            $document = $chunk->document;
+
+            // Support common filename attributes without assuming a
+            // particular document filename column exists.
+            $documentName = $document?->getAttribute('original_name')
+                ?? $document?->getAttribute('file_name')
+                ?? $document?->getAttribute('name')
+                ?? 'Document';
+
+            $contextParts[] = sprintf(
+                "[Source %d: %s]\n%s",
+                $index + 1,
+                $documentName,
+                $chunk->content
+            );
+        }
+
+        return [
+            implode("\n\n---\n\n", $contextParts),
+            $chunks,
+        ];
+    }
+
+    /**
+     * Persist source references for an assistant message.
+     *
+     * @param iterable<int, DocumentChunk> $chunks
+     */
+    private function saveSources(
+        Message $assistantMessage,
+        iterable $chunks
+    ): void {
+        foreach ($chunks as $index => $chunk) {
+            $assistantMessage->sources()->create([
+                'document_chunk_id' => $chunk->id,
+                'score' => (float) $chunk->similarity_score,
+                'rank' => $index + 1,
+            ]);
+        }
     }
 
     /**
@@ -241,24 +274,16 @@ class ConversationChatService
     ): array {
         $contextLimit = max(
             1,
-            (int) config(
-                'ai.context_message_limit',
-                12
-            )
+            (int) config('ai.context_message_limit', 12)
         );
 
-        return $conversation
-            ->messages()
+        return $conversation->messages()
             ->select([
                 'id',
                 'role',
                 'content',
             ])
-            ->where(
-                'id',
-                '<=',
-                $endingMessageId
-            )
+            ->where('id', '<=', $endingMessageId)
             ->whereIn('role', [
                 'user',
                 'assistant',
