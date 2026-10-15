@@ -3,9 +3,9 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\ConversationMessageController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\KnowledgeBaseController;
 use App\Http\Controllers\Api\DocumentController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,191 +37,118 @@ Route::prefix('auth')->group(function () {
         [AuthController::class, 'login']
     )->middleware('throttle:login');
 
-    Route::middleware('auth:sanctum')
-        ->group(function () {
-            Route::get(
-                '/user',
-                [AuthController::class, 'user']
-            );
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get(
+            '/user',
+            [AuthController::class, 'user']
+        );
 
-            Route::post(
-                '/logout',
-                [AuthController::class, 'logout']
-            );
-        });
+        Route::post(
+            '/logout',
+            [AuthController::class, 'logout']
+        );
+    });
 });
 
 /*
-|--------------------------------------------------------------------------
-| Authenticated Conversation API
-|--------------------------------------------------------------------------
-*/
-
-Route::middleware('auth:sanctum')
-    ->group(function () {
-        /*
-        |--------------------------------------------------------------------------
-        | Conversations
-        |--------------------------------------------------------------------------
-        */
-
-        Route::get(
-            '/conversations',
-            [ConversationController::class, 'index']
-        );
-
-        Route::post(
-            '/conversations',
-            [ConversationController::class, 'store']
-        );
-
-        Route::get(
-            '/conversations/{conversation}',
-            [ConversationController::class, 'show']
-        );
-
-        Route::patch(
-            '/conversations/{conversation}',
-            [ConversationController::class, 'update']
-        );
-
-        Route::delete(
-            '/conversations/{conversation}',
-            [ConversationController::class, 'destroy']
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Conversation Messages
-        |--------------------------------------------------------------------------
-        */
-
-        Route::get(
-            '/conversations/{conversation}/messages',
-            [ConversationMessageController::class, 'index']
-        );
-
-        /*
-        |--------------------------------------------------------------------------
-        | AI Generation
-        |--------------------------------------------------------------------------
-        |
-        | These endpoints call the AI provider, so they use the dedicated
-        | AI rate limiter to help prevent abuse and unnecessary usage.
-        |
-        */
-
-        Route::post(
-            '/conversations/{conversation}/messages',
-            [ConversationMessageController::class, 'store']
-        )->middleware('throttle:ai');
-
-        Route::post(
-            '/conversations/{conversation}/regenerate',
-            [ConversationMessageController::class, 'regenerate']
-        )->middleware('throttle:ai');
-    });
-
-    /*
 |--------------------------------------------------------------------------
 | Authenticated API
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth:sanctum')
-    ->group(function () {
-        /*
-        |--------------------------------------------------------------------------
-        | Conversations
-        |--------------------------------------------------------------------------
-        */
+Route::middleware('auth:sanctum')->group(function () {
 
-        Route::get(
-            '/conversations',
-            [ConversationController::class, 'index']
-        );
+    /*
+    |--------------------------------------------------------------------------
+    | Conversations
+    |--------------------------------------------------------------------------
+    */
 
-        Route::post(
-            '/conversations',
-            [ConversationController::class, 'store']
-        );
+    Route::get(
+        '/conversations',
+        [ConversationController::class, 'index']
+    );
 
-        Route::get(
-            '/conversations/{conversation}',
-            [ConversationController::class, 'show']
-        );
+    Route::post(
+        '/conversations',
+        [ConversationController::class, 'store']
+    );
 
-        Route::patch(
-            '/conversations/{conversation}',
-            [ConversationController::class, 'update']
-        );
+    Route::get(
+        '/conversations/{conversation}',
+        [ConversationController::class, 'show']
+    );
 
-        Route::delete(
-            '/conversations/{conversation}',
-            [ConversationController::class, 'destroy']
-        );
+    Route::patch(
+        '/conversations/{conversation}',
+        [ConversationController::class, 'update']
+    );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Conversation Messages
-        |--------------------------------------------------------------------------
-        */
+    Route::delete(
+        '/conversations/{conversation}',
+        [ConversationController::class, 'destroy']
+    );
 
-        Route::get(
-            '/conversations/{conversation}/messages',
-            [ConversationMessageController::class, 'index']
-        );
+    /*
+    |--------------------------------------------------------------------------
+    | Conversation Messages
+    |--------------------------------------------------------------------------
+    */
 
-        Route::post(
-            '/conversations/{conversation}/messages',
-            [ConversationMessageController::class, 'store']
-        )->middleware('throttle:ai');
+    Route::get(
+        '/conversations/{conversation}/messages',
+        [ConversationMessageController::class, 'index']
+    );
 
-        Route::post(
-            '/conversations/{conversation}/regenerate',
-            [ConversationMessageController::class, 'regenerate']
-        )->middleware('throttle:ai');
+    Route::post(
+        '/conversations/{conversation}/messages',
+        [ConversationMessageController::class, 'store']
+    )->middleware('throttle:ai');
 
-    
-        /*
-        |--------------------------------------------------------------------------
-        | Knowledge Bases
-        |--------------------------------------------------------------------------
-        */
+    Route::post(
+        '/conversations/{conversation}/regenerate',
+        [ConversationMessageController::class, 'regenerate']
+    )->middleware('throttle:ai');
 
-        Route::get(
-            '/knowledge-bases',
-            [KnowledgeBaseController::class, 'index']
-        );
+    /*
+    |--------------------------------------------------------------------------
+    | Knowledge Bases
+    |--------------------------------------------------------------------------
+    */
 
-        Route::post(
-            '/knowledge-bases',
-            [KnowledgeBaseController::class, 'store']
-        );
+    Route::get(
+        '/knowledge-bases',
+        [KnowledgeBaseController::class, 'index']
+    );
 
-        Route::get(
-            '/knowledge-bases/{knowledgeBase}',
-            [KnowledgeBaseController::class, 'show']
-        );
+    Route::post(
+        '/knowledge-bases',
+        [KnowledgeBaseController::class, 'store']
+    );
 
-        Route::patch(
-            '/knowledge-bases/{knowledgeBase}',
-            [KnowledgeBaseController::class, 'update']
-        );
+    Route::get(
+        '/knowledge-bases/{knowledgeBase}',
+        [KnowledgeBaseController::class, 'show']
+    );
 
-        Route::delete(
-            '/knowledge-bases/{knowledgeBase}',
-            [KnowledgeBaseController::class, 'destroy']
-        );
+    Route::patch(
+        '/knowledge-bases/{knowledgeBase}',
+        [KnowledgeBaseController::class, 'update']
+    );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Knowledge Base Documents
-        |--------------------------------------------------------------------------
-        */
+    Route::delete(
+        '/knowledge-bases/{knowledgeBase}',
+        [KnowledgeBaseController::class, 'destroy']
+    );
 
-        Route::post(
-            '/knowledge-bases/{knowledgeBase}/documents',
-            [DocumentController::class, 'store']
-        );
-    });
+    /*
+    |--------------------------------------------------------------------------
+    | Knowledge Base Documents
+    |--------------------------------------------------------------------------
+    */
+
+    Route::post(
+        '/knowledge-bases/{knowledgeBase}/documents',
+        [DocumentController::class, 'store']
+    );
+});
