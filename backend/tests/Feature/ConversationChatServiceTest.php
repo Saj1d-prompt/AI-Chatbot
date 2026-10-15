@@ -6,7 +6,6 @@ use App\Models\Conversation;
 use App\Models\Document;
 use App\Models\DocumentChunk;
 use App\Models\KnowledgeBase;
-use App\Models\Message;
 use App\Models\User;
 use App\Services\AI\ChatService;
 use App\Services\Conversations\ConversationChatService;
@@ -44,6 +43,7 @@ class ConversationChatServiceTest extends TestCase
             ->andReturn('Hello! How can I help you?');
 
         $ragService = Mockery::mock(RagRetrievalService::class);
+
         $ragService->shouldNotReceive('retrieveFromKnowledgeBases');
 
         $service = new ConversationChatService(
@@ -57,6 +57,7 @@ class ConversationChatServiceTest extends TestCase
         $this->assertSame('Hello!', $result['user_message']->content);
 
         $this->assertSame('assistant', $result['assistant_message']->role);
+
         $this->assertSame(
             'Hello! How can I help you?',
             $result['assistant_message']->content
@@ -119,6 +120,7 @@ class ConversationChatServiceTest extends TestCase
         $chunk->setAttribute('similarity_score', 0.92);
 
         $question = 'How many annual leave days do employees receive?';
+
         $expectedAnswer = 'Employees receive 20 days of annual leave.';
 
         $chatService = Mockery::mock(ChatService::class);
@@ -224,7 +226,6 @@ class ConversationChatServiceTest extends TestCase
             'content' => 'The previous answer was incorrect.',
         ]);
 
-        // Create an old source so the test can verify it is refreshed.
         $oldChunk = DocumentChunk::create([
             'document_id' => $document->id,
             'chunk_index' => 1,
@@ -371,5 +372,158 @@ class ConversationChatServiceTest extends TestCase
             0,
             $result['assistant_message']->sources()->count()
         );
+    }
+
+    public function test_chat_retrieves_from_multiple_knowledge_bases_and_saves_both_sources(): void
+    {
+        $user = User::factory()->create();
+
+        $conversation = Conversation::create([
+            'user_id' => $user->id,
+            'title' => 'Company Information',
+        ]);
+
+        $policyKb = KnowledgeBase::create([
+            'user_id' => $user->id,
+            'name' => 'Company Policies',
+            'description' => 'Employee policies',
+        ]);
+
+        $benefitsKb = KnowledgeBase::create([
+            'user_id' => $user->id,
+            'name' => 'Employee Benefits',
+            'description' => 'Employee benefits information',
+        ]);
+
+        $conversation->knowledgeBases()->attach([
+            $policyKb->id,
+            $benefitsKb->id,
+        ]);
+
+        $policyDocument = Document::create([
+            'knowledge_base_id' => $policyKb->id,
+            'original_name' => 'leave-policy.txt',
+            'stored_name' => 'leave-policy.txt',
+            'mime_type' => 'text/plain',
+            'file_path' => 'documents/leave-policy.txt',
+            'file_size' => 100,
+            'status' => 'completed',
+        ]);
+
+        $benefitsDocument = Document::create([
+            'knowledge_base_id' => $benefitsKb->id,
+            'original_name' => 'health-benefits.txt',
+            'stored_name' => 'health-benefits.txt',
+            'mime_type' => 'text/plain',
+            'file_path' => 'documents/health-benefits.txt',
+            'file_size' => 100,
+            'status' => 'completed',
+        ]);
+
+        $policyChunk = DocumentChunk::create([
+            'document_id' => $policyDocument->id,
+            'chunk_index' => 0,
+            'content' => 'Employees receive 20 days of annual leave.',
+            'embedding' => [0.1, 0.2, 0.3],
+        ]);
+
+        $benefitsChunk = DocumentChunk::create([
+            'document_id' => $benefitsDocument->id,
+            'chunk_index' => 0,
+            'content' => 'Employees receive health insurance coverage.',
+            'embedding' => [0.4, 0.5, 0.6],
+        ]);
+
+        $policyChunk->setAttribute('similarity_score', 0.95);
+        $benefitsChunk->setAttribute('similarity_score', 0.88);
+
+        $question = 'What leave and health benefits do employees receive?';
+
+        $chatService = Mockery::mock(ChatService::class);
+
+        $chatService->shouldReceive('generateReply')
+            ->once()
+            ->with(
+                Mockery::on(fn (array $messages) =>
+                    count($messages) === 1
+                    && $messages[0]['role'] === 'user'
+                    && $messages[0]['content'] === $question
+                ),
+                Mockery::on(fn (?string $context) =>
+                    $context !== null
+                    && str_contains(
+                        $context,
+                        'Employees receive 20 days of annual leave.'
+                    )
+                    && str_contains(
+                        $context,
+                        'Employees receive health insurance coverage.'
+                    )
+                    && str_contains($context, 'leave-policy.txt')
+                    && str_contains($context, 'health-benefits.txt')
+                )
+            )
+            ->andReturn(
+                'Employees receive 20 days of annual leave and health insurance coverage.'
+            );
+
+        $ragService = Mockery::mock(RagRetrievalService::class);
+
+        $ragService->shouldReceive('retrieveFromKnowledgeBases')
+            ->once()
+            ->with(
+                $question,
+                Mockery::on(function (array $ids) use ($policyKb, $benefitsKb) {
+                    sort($ids);
+
+                    $expected = [$policyKb->id, $benefitsKb->id];
+                    sort($expected);
+
+                    return $ids === $expected;
+                }),
+                Mockery::type('int'),
+                Mockery::type('float')
+            )
+            ->andReturn(
+                new EloquentCollection([$policyChunk, $benefitsChunk])
+            );
+
+        $service = new ConversationChatService(
+            $chatService,
+            $ragService
+        );
+
+        $result = $service->sendMessage($conversation, $question);
+
+        $assistantMessage = $result['assistant_message'];
+
+        $this->assertSame(
+            'Employees receive 20 days of annual leave and health insurance coverage.',
+            $assistantMessage->content
+        );
+
+        $this->assertSame(
+            2,
+            $assistantMessage->sources()->count()
+        );
+
+        $this->assertDatabaseHas('message_sources', [
+            'message_id' => $assistantMessage->id,
+            'document_chunk_id' => $policyChunk->id,
+            'rank' => 1,
+        ]);
+
+        $this->assertDatabaseHas('message_sources', [
+            'message_id' => $assistantMessage->id,
+            'document_chunk_id' => $benefitsChunk->id,
+            'rank' => 2,
+        ]);
+
+        $sources = $assistantMessage->sources()
+            ->orderBy('rank')
+            ->get();
+
+        $this->assertEquals(0.95, (float) $sources[0]->score);
+        $this->assertEquals(0.88, (float) $sources[1]->score);
     }
 }
