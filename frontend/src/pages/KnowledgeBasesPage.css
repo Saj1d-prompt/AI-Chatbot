@@ -280,3 +280,19 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Allow the Knowledge Bases page to scroll independently */
+
+.kb-page {
+  height: 100vh;
+  min-height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  overscroll-behavior-y: contain;
+}
+
+.kb-container {
+  padding-bottom: 40px;
+}
