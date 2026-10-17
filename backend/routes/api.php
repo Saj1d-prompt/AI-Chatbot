@@ -147,6 +147,11 @@ Route::middleware('auth:sanctum')->group(function () {
     |--------------------------------------------------------------------------
     */
 
+    Route::get(
+        '/knowledge-bases/{knowledgeBase}/documents',
+        [DocumentController::class, 'index']
+    );
+
     Route::post(
         '/knowledge-bases/{knowledgeBase}/documents',
         [DocumentController::class, 'store']
