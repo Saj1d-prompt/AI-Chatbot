@@ -40,8 +40,17 @@ export const knowledgeBaseApi = {
     return response.data;
   },
 
+  async getDocuments(knowledgeBaseId) {
+    const response = await apiClient.get(
+      `/knowledge-bases/${knowledgeBaseId}/documents`
+    );
+
+    return response.data.data;
+  },
+
   async uploadDocument(knowledgeBaseId, file) {
     const formData = new FormData();
+
     formData.append("file", file);
 
     const response = await apiClient.post(
