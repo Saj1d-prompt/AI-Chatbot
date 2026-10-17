@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { knowledgeBaseApi } from "../services/api/knowledgeBaseApi";
+import DocumentManager from "../components/knowledge/DocumentManager";
 import "./KnowledgeBasesPage.css";
 
 function getErrorMessage(error) {
@@ -20,6 +21,8 @@ export default function KnowledgeBasesPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [editingId, setEditingId] = useState(null);
+
+  const [expandedId, setExpandedId] = useState(null);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -130,12 +133,30 @@ export default function KnowledgeBasesPage() {
         resetForm();
       }
 
+      if (expandedId === kb.id) {
+        setExpandedId(null);
+      }
+
       setSuccess("Knowledge base deleted successfully.");
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setBusyId(null);
     }
+  }
+
+  function handleDocumentUploaded(knowledgeBaseId) {
+    setKnowledgeBases((current) =>
+      current.map((kb) =>
+        kb.id === knowledgeBaseId
+          ? {
+              ...kb,
+              documents_count:
+                (Number(kb.documents_count) || 0) + 1,
+            }
+          : kb
+      )
+    );
   }
 
   return (
@@ -238,7 +259,9 @@ export default function KnowledgeBasesPage() {
           </div>
 
           {loading ? (
-            <p className="kb-state">Loading knowledge bases...</p>
+            <p className="kb-state">
+              Loading knowledge bases...
+            </p>
           ) : knowledgeBases.length === 0 ? (
             <div className="kb-empty">
               <div className="kb-empty-icon">📚</div>
@@ -268,6 +291,22 @@ export default function KnowledgeBasesPage() {
                   <div className="kb-card-actions">
                     <button
                       type="button"
+                      className="kb-primary-button"
+                      onClick={() =>
+                        setExpandedId((current) =>
+                          current === kb.id ? null : kb.id
+                        )
+                      }
+                      disabled={busyId !== null}
+                      aria-expanded={expandedId === kb.id}
+                    >
+                      {expandedId === kb.id
+                        ? "Hide Documents"
+                        : "Documents"}
+                    </button>
+
+                    <button
+                      type="button"
                       className="kb-secondary-button"
                       onClick={() => startEditing(kb)}
                       disabled={busyId !== null || saving}
@@ -286,6 +325,15 @@ export default function KnowledgeBasesPage() {
                         : "Delete"}
                     </button>
                   </div>
+
+                  {expandedId === kb.id && (
+                    <DocumentManager
+                      knowledgeBaseId={kb.id}
+                      onDocumentUploaded={() =>
+                        handleDocumentUploaded(kb.id)
+                      }
+                    />
+                  )}
                 </article>
               ))}
             </div>
