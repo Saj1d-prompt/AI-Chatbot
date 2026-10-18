@@ -216,3 +216,44 @@
     flex-direction: column;
   }
 }
+
+
+/* Document processing actions */
+
+.dm-process-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  padding: 9px 13px;
+  border: 1px solid #6366f1;
+  border-radius: 7px;
+  background: #312e81;
+  color: #e0e7ff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.dm-process-button:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.dm-process-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dm-processing-message {
+  margin: 10px 0 0;
+  color: #93c5fd;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.dm-document-main {
+  flex: 1;
+  min-width: 0;
+}
