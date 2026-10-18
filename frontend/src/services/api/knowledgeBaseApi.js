@@ -65,4 +65,12 @@ export const knowledgeBaseApi = {
 
     return response.data.data;
   },
+
+  async processDocument(knowledgeBaseId, documentId) {
+    const response = await apiClient.post(
+      `/knowledge-bases/${knowledgeBaseId}/documents/${documentId}/process`
+    );
+
+    return response.data.data;
+  },
 };
