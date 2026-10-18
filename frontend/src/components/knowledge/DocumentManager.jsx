@@ -16,6 +16,13 @@ function getErrorMessage(error) {
     }
   }
 
+  if (error?.code === "ECONNABORTED") {
+    return (
+      "The request timed out. Refresh the document list " +
+      "to check whether processing completed before retrying."
+    );
+  }
+
   return (
     error?.response?.data?.message ||
     error?.message ||
@@ -24,11 +31,11 @@ function getErrorMessage(error) {
 }
 
 function formatFileSize(bytes) {
-  if (!Number.isFinite(Number(bytes))) {
+  const size = Number(bytes);
+
+  if (!Number.isFinite(size) || size < 0) {
     return "Unknown size";
   }
-
-  const size = Number(bytes);
 
   if (size < 1024) {
     return `${size} B`;
@@ -59,16 +66,20 @@ export default function DocumentManager({
 }) {
   const [documents, setDocuments] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [processingId, setProcessingId] = useState(null);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const fileInputRef = useRef(null);
 
+  const isBusy = uploading || processingId !== null;
+
   const loadDocuments = useCallback(async () => {
     setLoading(true);
-    setError("");
 
     try {
       const result = await knowledgeBaseApi.getDocuments(
@@ -122,7 +133,7 @@ export default function DocumentManager({
   async function handleUpload(event) {
     event.preventDefault();
 
-    if (!selectedFile || uploading) {
+    if (!selectedFile || isBusy) {
       return;
     }
 
@@ -138,7 +149,8 @@ export default function DocumentManager({
         );
 
       setSuccess(
-        `"${uploadedDocument.original_name}" uploaded successfully. Processing is not started yet.`
+        `"${uploadedDocument.original_name}" uploaded successfully. ` +
+        "Click Process Document to make it searchable."
       );
 
       setSelectedFile(null);
@@ -149,14 +161,64 @@ export default function DocumentManager({
 
       await loadDocuments();
 
-      if (onDocumentUploaded) {
-        onDocumentUploaded();
-      }
+      onDocumentUploaded?.();
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setUploading(false);
     }
+  }
+
+  async function handleProcess(document) {
+    if (isBusy || loading) {
+      return;
+    }
+
+    try {
+      setProcessingId(document.id);
+      setError("");
+      setSuccess("");
+
+      // Show an immediate visual processing state.
+      setDocuments((current) =>
+        current.map((item) =>
+          item.id === document.id
+            ? { ...item, status: "processing" }
+            : item
+        )
+      );
+
+      const processedDocument =
+        await knowledgeBaseApi.processDocument(
+          knowledgeBaseId,
+          document.id
+        );
+
+      setSuccess(
+        `"${document.original_name}" processed successfully. ` +
+        `${processedDocument.chunks_count} chunks created.`
+      );
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      // Reload the authoritative status from Laravel.
+      await loadDocuments();
+      setProcessingId(null);
+    }
+  }
+
+  async function handleRefresh() {
+    setError("");
+    setSuccess("");
+
+    await loadDocuments();
+  }
+
+  function canProcess(document) {
+    return (
+      document.status === "uploaded" ||
+      document.status === "failed"
+    );
   }
 
   return (
@@ -165,7 +227,8 @@ export default function DocumentManager({
         <div>
           <h4>Manage Documents</h4>
           <p>
-            Upload text files to this knowledge base.
+            Upload and process TXT files to make them
+            searchable by your AI assistant.
           </p>
         </div>
       </div>
@@ -182,7 +245,10 @@ export default function DocumentManager({
         </div>
       )}
 
-      <form className="dm-upload-form" onSubmit={handleUpload}>
+      <form
+        className="dm-upload-form"
+        onSubmit={handleUpload}
+      >
         <label htmlFor={`dm-file-${knowledgeBaseId}`}>
           Select a TXT document
         </label>
@@ -193,7 +259,7 @@ export default function DocumentManager({
           type="file"
           accept=".txt,text/plain"
           onChange={handleFileChange}
-          disabled={uploading}
+          disabled={isBusy}
         />
 
         <p className="dm-help">
@@ -210,7 +276,7 @@ export default function DocumentManager({
         <button
           className="dm-upload-button"
           type="submit"
-          disabled={!selectedFile || uploading}
+          disabled={!selectedFile || isBusy}
         >
           {uploading ? "Uploading..." : "Upload Document"}
         </button>
@@ -222,63 +288,96 @@ export default function DocumentManager({
         <button
           type="button"
           className="dm-refresh-button"
-          onClick={loadDocuments}
-          disabled={loading || uploading}
+          onClick={handleRefresh}
+          disabled={loading || isBusy}
         >
           {loading ? "Loading..." : "Refresh"}
         </button>
       </div>
 
-      {loading ? (
+      {loading && (
         <p className="dm-empty-text">
           Loading documents...
         </p>
-      ) : documents.length === 0 ? (
+      )}
+
+      {!loading && documents.length === 0 && (
         <p className="dm-empty-text">
           No documents uploaded yet.
         </p>
-      ) : (
+      )}
+
+      {!loading && documents.length > 0 && (
         <div className="dm-document-list">
-          {documents.map((document) => (
-            <div
-              className="dm-document"
-              key={document.id}
-            >
-              <div className="dm-document-main">
-                <div className="dm-document-name">
-                  {document.original_name}
-                </div>
+          {documents.map((document) => {
+            const isProcessing =
+              processingId === document.id;
 
-                <div className="dm-document-meta">
-                  {formatFileSize(document.file_size)}
-                  {" · "}
-                  {document.chunks_count ?? 0} chunks
-                </div>
+            return (
+              <div
+                className="dm-document"
+                key={document.id}
+              >
+                <div className="dm-document-main">
+                  <div className="dm-document-name">
+                    {document.original_name}
+                  </div>
 
-                {document.status === "failed" &&
-                  document.error_message && (
-                    <p className="dm-document-error">
-                      {document.error_message}
+                  <div className="dm-document-meta">
+                    {formatFileSize(document.file_size)}
+                    {" · "}
+                    {document.chunks_count ?? 0} chunks
+                  </div>
+
+                  {document.status === "failed" &&
+                    document.error_message && (
+                      <p className="dm-document-error">
+                        {document.error_message}
+                      </p>
+                    )}
+
+                  {isProcessing && (
+                    <p
+                      className="dm-processing-message"
+                      role="status"
+                    >
+                      Generating embeddings. Please keep
+                      this page open until the request finishes.
                     </p>
                   )}
-              </div>
 
-              <span
-                className={`dm-status dm-status-${
-                  document.status || "unknown"
-                }`}
-              >
-                {formatStatus(document.status)}
-              </span>
-            </div>
-          ))}
+                  {canProcess(document) && (
+                    <button
+                      type="button"
+                      className="dm-process-button"
+                      onClick={() => handleProcess(document)}
+                      disabled={isBusy || loading}
+                    >
+                      {document.status === "failed"
+                        ? "Retry Processing"
+                        : "Process Document"}
+                    </button>
+                  )}
+                </div>
+
+                <span
+                  className={`dm-status dm-status-${
+                    document.status || "unknown"
+                  }`}
+                >
+                  {formatStatus(document.status)}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
 
       <p className="dm-note">
-        Uploaded documents are not searchable until
-        text extraction, chunking and embedding
-        generation have completed successfully.
+        Only documents with Ready status have completed
+        text extraction, chunking, and embedding generation.
+        To use them in chat, the knowledge base must also
+        be attached to the conversation.
       </p>
     </section>
   );
