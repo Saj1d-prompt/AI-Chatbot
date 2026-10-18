@@ -156,4 +156,9 @@ Route::middleware('auth:sanctum')->group(function () {
         '/knowledge-bases/{knowledgeBase}/documents',
         [DocumentController::class, 'store']
     );
+
+    Route::post(
+        '/knowledge-bases/{knowledgeBase}/documents/{document}/process',
+        [DocumentController::class, 'process']
+    )->middleware('throttle:ai');
 });
