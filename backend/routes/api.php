@@ -89,6 +89,11 @@ Route::middleware('auth:sanctum')->group(function () {
         [ConversationController::class, 'destroy']
     );
 
+    Route::put(
+        '/conversations/{conversation}/knowledge-bases',
+        [ConversationController::class, 'updateKnowledgeBases']
+    );
+
     /*
     |--------------------------------------------------------------------------
     | Conversation Messages
