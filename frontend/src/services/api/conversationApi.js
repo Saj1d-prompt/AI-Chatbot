@@ -1,16 +1,21 @@
+
 import apiClient from "./apiClient";
 
 export async function getConversations() {
+  const response = await apiClient.get("/conversations");
+
+  return response.data;
+}
+
+export async function getConversation(conversationId) {
   const response = await apiClient.get(
-    "/conversations"
+    `/conversations/${conversationId}`
   );
 
   return response.data;
 }
 
-export async function createConversation(
-  title = null
-) {
+export async function createConversation(title = null) {
   const payload = {};
 
   if (title) {
@@ -37,9 +42,7 @@ export async function getConversationMessages(
 
   const response = await apiClient.get(
     `/conversations/${conversationId}/messages`,
-    {
-      params,
-    }
+    { params }
   );
 
   return response.data;
@@ -51,9 +54,7 @@ export async function sendConversationMessage(
 ) {
   const response = await apiClient.post(
     `/conversations/${conversationId}/messages`,
-    {
-      message,
-    }
+    { message }
   );
 
   return response.data;
@@ -75,19 +76,29 @@ export async function renameConversation(
 ) {
   const response = await apiClient.patch(
     `/conversations/${conversationId}`,
-    {
-      title,
-    }
+    { title }
   );
 
   return response.data;
 }
 
-export async function deleteConversation(
-  conversationId
-) {
+export async function deleteConversation(conversationId) {
   const response = await apiClient.delete(
     `/conversations/${conversationId}`
+  );
+
+  return response.data;
+}
+
+export async function updateConversationKnowledgeBases(
+  conversationId,
+  knowledgeBaseIds
+) {
+  const response = await apiClient.put(
+    `/conversations/${conversationId}/knowledge-bases`,
+    {
+      knowledge_base_ids: knowledgeBaseIds,
+    }
   );
 
   return response.data;
