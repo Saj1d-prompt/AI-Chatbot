@@ -4,6 +4,8 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 
+import KnowledgeBaseSelector from "./KnowledgeBaseSelector";
+
 import "./ChatHeader.css";
 
 function ChatHeader({
@@ -11,51 +13,58 @@ function ChatHeader({
   conversation,
 }) {
   return (
-    <header className="chat-header">
-      <div className="chat-header-left">
-        <button
-          className="mobile-menu-button"
-          type="button"
-          aria-label="Open sidebar"
-          onClick={onMenuClick}
-        >
-          <Menu size={19} />
-        </button>
+    <>
+      <header className="chat-header">
+        <div className="chat-header-left">
+          <button
+            className="mobile-menu-button"
+            type="button"
+            aria-label="Open sidebar"
+            onClick={onMenuClick}
+          >
+            <Menu size={19} />
+          </button>
 
-        <button
-          className="assistant-selector"
-          type="button"
-        >
-          <div>
-            <span className="assistant-name">
-              {conversation?.title ||
-                "Nexus Assistant"}
-            </span>
+          <button
+            className="assistant-selector"
+            type="button"
+          >
+            <div>
+              <span className="assistant-name">
+                {conversation?.title ||
+                  "Nexus Assistant"}
+              </span>
 
-            <span className="assistant-model">
-              Cloudflare Workers AI
-            </span>
-          </div>
+              <span className="assistant-model">
+                Cloudflare Workers AI
+              </span>
+            </div>
 
-          <ChevronDown size={14} />
-        </button>
-      </div>
-
-      <div className="chat-header-right">
-        <div className="connection-status">
-          <span className="connection-dot" />
-          <span>Online</span>
+            <ChevronDown size={14} />
+          </button>
         </div>
 
-        <button
-          className="header-action-button"
-          type="button"
-          aria-label="Conversation options"
-        >
-          <MoreHorizontal size={19} />
-        </button>
-      </div>
-    </header>
+        <div className="chat-header-right">
+          <div className="connection-status">
+            <span className="connection-dot" />
+            <span>Online</span>
+          </div>
+
+          <button
+            className="header-action-button"
+            type="button"
+            aria-label="Conversation options"
+          >
+            <MoreHorizontal size={19} />
+          </button>
+        </div>
+      </header>
+
+      <KnowledgeBaseSelector
+        key={conversation?.id ?? "no-conversation"}
+        conversationId={conversation?.id ?? null}
+      />
+    </>
   );
 }
 
