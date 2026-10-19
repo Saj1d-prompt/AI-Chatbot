@@ -8,16 +8,15 @@ use App\Http\Requests\Conversation\UpdateConversationRequest;
 use App\Models\Conversation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ConversationController extends Controller
 {
     /**
-     * Return only conversations belonging
-     * to the authenticated user.
+     * List conversations owned by the user.
      */
-    public function index(
-        Request $request
-    ): JsonResponse {
+    public function index(Request $request): JsonResponse
+    {
         $conversations = $request
             ->user()
             ->conversations()
@@ -32,8 +31,7 @@ class ConversationController extends Controller
     }
 
     /**
-     * Create a conversation owned by
-     * the authenticated user.
+     * Create a new conversation.
      */
     public function store(
         StoreConversationRequest $request
@@ -42,61 +40,58 @@ class ConversationController extends Controller
             ->user()
             ->conversations()
             ->create([
-                'title' =>
-                    $request->validated(
-                        'title'
-                    ),
+                'title' => $request->validated('title'),
             ]);
 
         return response()->json([
             'success' => true,
-            'conversation' =>
-                $conversation,
+            'conversation' => $conversation,
         ], 201);
     }
 
     /**
-     * Return one conversation only if
-     * it belongs to the authenticated user.
+     * Show a conversation and its attached
+     * knowledge base IDs.
      */
     public function show(
         Request $request,
         $conversation
     ): JsonResponse {
-        $conversationModel =
-            $this->findOwnedConversation(
-                $request,
-                $conversation
-            );
+        $conversationModel = $this->findOwnedConversation(
+            $request,
+            $conversation
+        );
 
-        $conversationModel
-            ->loadCount('messages');
+        $conversationModel->loadCount('messages');
+
+        $knowledgeBaseIds = $conversationModel
+            ->knowledgeBases()
+            ->pluck('knowledge_bases.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
 
         return response()->json([
             'success' => true,
-            'conversation' =>
-                $conversationModel,
+            'conversation' => $conversationModel,
+            'knowledge_base_ids' => $knowledgeBaseIds,
         ]);
     }
 
     /**
-     * Rename an owned conversation.
+     * Rename a conversation.
      */
     public function update(
         UpdateConversationRequest $request,
         $conversation
     ): JsonResponse {
-        $conversationModel =
-            $this->findOwnedConversation(
-                $request,
-                $conversation
-            );
+        $conversationModel = $this->findOwnedConversation(
+            $request,
+            $conversation
+        );
 
         $conversationModel->update([
             'title' => trim(
-                $request->validated(
-                    'title'
-                )
+                $request->validated('title')
             ),
         ]);
 
@@ -104,40 +99,107 @@ class ConversationController extends Controller
 
         return response()->json([
             'success' => true,
-            'conversation' =>
-                $conversationModel,
+            'conversation' => $conversationModel,
         ]);
     }
 
     /**
-     * Delete an owned conversation.
+     * Delete a conversation.
      */
     public function destroy(
         Request $request,
         $conversation
     ): JsonResponse {
-        $conversationModel =
-            $this->findOwnedConversation(
-                $request,
-                $conversation
-            );
+        $conversationModel = $this->findOwnedConversation(
+            $request,
+            $conversation
+        );
 
         $conversationModel->delete();
 
         return response()->json([
             'success' => true,
-            'message' =>
-                'Conversation deleted successfully.',
+            'message' => 'Conversation deleted successfully.',
         ]);
     }
 
     /**
-     * Resolve a conversation through the
-     * authenticated user's relationship.
+     * Replace the knowledge bases attached
+     * to a conversation.
      *
-     * This prevents one user from accessing
-     * another user's conversation simply by
-     * changing the conversation ID.
+     * Passing an empty array removes all attachments.
+     */
+    public function updateKnowledgeBases(
+        Request $request,
+        $conversation
+    ): JsonResponse {
+        $conversationModel = $this->findOwnedConversation(
+            $request,
+            $conversation
+        );
+
+        $validated = $request->validate([
+            'knowledge_base_ids' => [
+                'present',
+                'array',
+                'max:20',
+            ],
+            'knowledge_base_ids.*' => [
+                'integer',
+                'min:1',
+                'distinct',
+            ],
+        ]);
+
+        $requestedIds = array_map(
+            'intval',
+            $validated['knowledge_base_ids']
+        );
+
+        /*
+         * Check every requested knowledge base
+         * against the authenticated user's ownership.
+         */
+        $ownedIds = $request
+            ->user()
+            ->knowledgeBases()
+            ->whereIn('id', $requestedIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if (count($ownedIds) !== count($requestedIds)) {
+            throw ValidationException::withMessages([
+                'knowledge_base_ids' => [
+                    'One or more selected knowledge bases are unavailable.',
+                ],
+            ]);
+        }
+
+        /*
+         * Sync replaces the existing attachments.
+         * It also accepts [] to detach everything.
+         */
+        $conversationModel
+            ->knowledgeBases()
+            ->sync($requestedIds);
+
+        $attachedIds = $conversationModel
+            ->knowledgeBases()
+            ->pluck('knowledge_bases.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Conversation knowledge bases updated.',
+            'knowledge_base_ids' => $attachedIds,
+        ]);
+    }
+
+    /**
+     * Resolve conversations only through
+     * the authenticated user's ownership.
      */
     private function findOwnedConversation(
         Request $request,
