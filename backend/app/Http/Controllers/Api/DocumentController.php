@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Document\StoreDocumentRequest;
+use App\Jobs\ProcessDocumentJob;
 use App\Models\KnowledgeBase;
 use App\Services\RAG\DocumentProcessingService;
 use Illuminate\Http\JsonResponse;
@@ -49,7 +50,8 @@ class DocumentController extends Controller
     }
 
     /**
-     * Upload a TXT document.
+     * Upload a TXT document and automatically
+     * dispatch its background processing job.
      */
     public function store(
         StoreDocumentRequest $request,
@@ -84,7 +86,15 @@ class DocumentController extends Controller
             ], 500);
         }
 
+        $document = null;
+
         try {
+            /*
+             * Save document information.
+             *
+             * It remains uploaded until the queue worker
+             * starts the processing service.
+             */
             $document = $knowledgeBase
                 ->documents()
                 ->create([
@@ -101,7 +111,26 @@ class DocumentController extends Controller
 
                     'status' => 'uploaded',
                 ]);
+
+            /*
+             * Automatically dispatch processing.
+             *
+             * With QUEUE_CONNECTION=database,
+             * Laravel stores the job in the jobs table.
+             *
+             * The worker will process it separately.
+             */
+            ProcessDocumentJob::dispatch($document->id);
+
         } catch (Throwable $exception) {
+            /*
+             * If saving or queue dispatch fails,
+             * remove the incomplete upload.
+             */
+            if ($document !== null) {
+                $document->delete();
+            }
+
             Storage::disk('local')->delete($path);
 
             throw $exception;
@@ -109,13 +138,16 @@ class DocumentController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Document uploaded successfully.',
+            'message' =>
+                'Document uploaded and queued for processing.',
             'data' => $document,
         ], 201);
     }
 
     /**
-     * Process an uploaded document using the RAG pipeline.
+     * Keep the existing manual processing endpoint.
+     *
+     * It can still be used to retry failed documents.
      */
     public function process(
         Request $request,
@@ -123,26 +155,16 @@ class DocumentController extends Controller
         $knowledgeBase,
         $document
     ): JsonResponse {
-        /*
-         * Verify ownership of the knowledge base.
-         */
         $knowledgeBase = $this->findOwnedKnowledgeBase(
             $request,
             $knowledgeBase
         );
 
-        /*
-         * Find the document only within this knowledge base.
-         * This prevents processing another user's documents.
-         */
         $document = $knowledgeBase
             ->documents()
             ->whereKey($document)
             ->firstOrFail();
 
-        /*
-         * Prevent unnecessary reprocessing.
-         */
         if (in_array(
             $document->status,
             ['ready', 'completed', 'processing'],
@@ -155,10 +177,6 @@ class DocumentController extends Controller
             ], 409);
         }
 
-        /*
-         * Only uploaded or previously failed documents
-         * may be submitted for processing.
-         */
         if (!in_array(
             $document->status,
             ['uploaded', 'failed'],
@@ -172,14 +190,6 @@ class DocumentController extends Controller
         }
 
         try {
-            /*
-             * The existing service:
-             * - extracts text
-             * - creates chunks
-             * - generates embeddings
-             * - saves chunks
-             * - marks document ready
-             */
             $processedDocument = $processingService
                 ->process($document);
 
@@ -213,7 +223,8 @@ class DocumentController extends Controller
     }
 
     /**
-     * Resolve a knowledge base belonging to the current user.
+     * Resolve knowledge bases through the
+     * authenticated user's ownership.
      */
     private function findOwnedKnowledgeBase(
         Request $request,
