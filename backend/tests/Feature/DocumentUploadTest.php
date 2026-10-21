@@ -6,6 +6,7 @@ use App\Models\KnowledgeBase;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -41,7 +42,19 @@ class DocumentUploadTest extends TestCase
 
     public function test_user_can_upload_txt_document_to_their_knowledge_base(): void
     {
+        /*
+         * Fake local file storage.
+         */
         Storage::fake('local');
+
+        /*
+         * Prevent queued processing jobs from executing
+         * during this upload test.
+         *
+         * This allows us to verify that the document
+         * is initially saved with status "uploaded".
+         */
+        Queue::fake();
 
         $user = User::factory()->create();
 
