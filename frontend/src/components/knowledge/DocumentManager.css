@@ -257,3 +257,11 @@
   flex: 1;
   min-width: 0;
 }
+
+
+.dm-processing-message {
+  margin: 10px 0;
+  color: #93c5fd;
+  font-size: 12px;
+  line-height: 1.6;
+}
