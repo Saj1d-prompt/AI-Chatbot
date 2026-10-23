@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ConversationMessageController;
 use App\Http\Controllers\Api\KnowledgeBaseController;
 use App\Http\Controllers\Api\DocumentController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\ConversationAttachmentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -166,4 +167,16 @@ Route::middleware('auth:sanctum')->group(function () {
         '/knowledge-bases/{knowledgeBase}/documents/{document}/process',
         [DocumentController::class, 'process']
     )->middleware('throttle:ai');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Conversation Attachments
+    |--------------------------------------------------------------------------
+    */
+
+    Route::post(
+        '/conversations/{conversation}/attachments',
+        [ConversationAttachmentController::class, 'store']
+    )->middleware('throttle:ai');
+
 });
