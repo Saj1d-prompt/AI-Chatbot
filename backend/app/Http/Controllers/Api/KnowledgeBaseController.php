@@ -12,14 +12,17 @@ use Illuminate\Http\Request;
 class KnowledgeBaseController extends Controller
 {
     /**
-     * Return all knowledge bases owned by
-     * the authenticated user.
+     * List only reusable knowledge bases.
+     *
+     * Internal conversation attachment knowledge bases
+     * must not appear in the normal management interface.
      */
     public function index(Request $request): JsonResponse
     {
         $knowledgeBases = $request
             ->user()
             ->knowledgeBases()
+            ->whereNull('conversation_id')
             ->withCount('documents')
             ->orderByDesc('updated_at')
             ->get();
@@ -31,8 +34,7 @@ class KnowledgeBaseController extends Controller
     }
 
     /**
-     * Create a knowledge base for the
-     * authenticated user.
+     * Create a regular, reusable knowledge base.
      */
     public function store(
         StoreKnowledgeBaseRequest $request
@@ -40,38 +42,37 @@ class KnowledgeBaseController extends Controller
         $knowledgeBase = $request
             ->user()
             ->knowledgeBases()
-            ->create(
-                $request->validated()
-            );
+            ->create([
+                'name' => $request->validated('name'),
+                'description' =>
+                    $request->validated('description'),
+                'conversation_id' => null,
+            ]);
 
-        $knowledgeBase->loadCount(
-            'documents'
-        );
+        $knowledgeBase->loadCount('documents');
 
         return response()->json([
             'success' => true,
-            'message' => 'Knowledge base created successfully.',
+            'message' =>
+                'Knowledge base created successfully.',
             'data' => $knowledgeBase,
         ], 201);
     }
 
     /**
-     * Return one knowledge base owned by
-     * the authenticated user.
+     * Show only a regular knowledge base
+     * belonging to the authenticated user.
      */
     public function show(
         Request $request,
         $knowledgeBase
     ): JsonResponse {
-        $knowledgeBase = $this
-            ->findOwnedKnowledgeBase(
-                $request,
-                $knowledgeBase
-            );
-
-        $knowledgeBase->loadCount(
-            'documents'
+        $knowledgeBase = $this->findOwnedRegularKnowledgeBase(
+            $request,
+            $knowledgeBase
         );
+
+        $knowledgeBase->loadCount('documents');
 
         return response()->json([
             'success' => true,
@@ -80,70 +81,70 @@ class KnowledgeBaseController extends Controller
     }
 
     /**
-     * Update one knowledge base owned by
-     * the authenticated user.
+     * Update only a regular knowledge base.
      */
     public function update(
         UpdateKnowledgeBaseRequest $request,
         $knowledgeBase
     ): JsonResponse {
-        $knowledgeBase = $this
-            ->findOwnedKnowledgeBase(
-                $request,
-                $knowledgeBase
-            );
+        $knowledgeBase = $this->findOwnedRegularKnowledgeBase(
+            $request,
+            $knowledgeBase
+        );
 
         $knowledgeBase->update(
             $request->validated()
         );
 
-        $knowledgeBase->loadCount(
-            'documents'
-        );
+        $knowledgeBase->refresh();
+        $knowledgeBase->loadCount('documents');
 
         return response()->json([
             'success' => true,
-            'message' => 'Knowledge base updated successfully.',
-            'data' => $knowledgeBase->fresh(),
+            'message' =>
+                'Knowledge base updated successfully.',
+            'data' => $knowledgeBase,
         ]);
     }
 
     /**
-     * Delete one knowledge base owned by
-     * the authenticated user.
+     * Delete only a regular knowledge base.
+     *
+     * Internal chat storage is managed through
+     * its owning conversation instead.
      */
     public function destroy(
         Request $request,
         $knowledgeBase
     ): JsonResponse {
-        $knowledgeBase = $this
-            ->findOwnedKnowledgeBase(
-                $request,
-                $knowledgeBase
-            );
+        $knowledgeBase = $this->findOwnedRegularKnowledgeBase(
+            $request,
+            $knowledgeBase
+        );
 
         $knowledgeBase->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Knowledge base deleted successfully.',
+            'message' =>
+                'Knowledge base deleted successfully.',
         ]);
     }
 
     /**
-     * Resolve a knowledge base only through
-     * the currently authenticated user.
+     * Resolve an owned, reusable knowledge base.
      *
-     * If the knowledge base belongs to another
-     * user, firstOrFail() returns 404.
+     * Even the owner cannot access internal chat
+     * storage through ordinary management routes.
      */
-    private function findOwnedKnowledgeBase(
+    private function findOwnedRegularKnowledgeBase(
         Request $request,
         $knowledgeBaseId
     ): KnowledgeBase {
         return $request
             ->user()
             ->knowledgeBases()
+            ->whereNull('conversation_id')
             ->whereKey($knowledgeBaseId)
             ->firstOrFail();
     }
