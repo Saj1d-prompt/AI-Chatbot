@@ -3,10 +3,11 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\ConversationMessageController;
+use App\Http\Controllers\Api\ConversationAttachmentController;
 use App\Http\Controllers\Api\KnowledgeBaseController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Middleware\EnsureRegularKnowledgeBase;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\ConversationAttachmentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,6 +29,7 @@ Route::get('/health', function () {
 */
 
 Route::prefix('auth')->group(function () {
+
     Route::post(
         '/register',
         [AuthController::class, 'register']
@@ -39,6 +41,7 @@ Route::prefix('auth')->group(function () {
     )->middleware('throttle:login');
 
     Route::middleware('auth:sanctum')->group(function () {
+
         Route::get(
             '/user',
             [AuthController::class, 'user']
@@ -151,27 +154,51 @@ Route::middleware('auth:sanctum')->group(function () {
     |--------------------------------------------------------------------------
     | Knowledge Base Documents
     |--------------------------------------------------------------------------
+    |
+    | These endpoints are only available for regular,
+    | reusable knowledge bases.
+    |
+    | Internal chat attachment knowledge bases must
+    | not be accessed through these routes.
+    |
     */
 
-    Route::get(
-        '/knowledge-bases/{knowledgeBase}/documents',
-        [DocumentController::class, 'index']
-    );
+    Route::middleware([
+        EnsureRegularKnowledgeBase::class,
+    ])->group(function () {
 
-    Route::post(
-        '/knowledge-bases/{knowledgeBase}/documents',
-        [DocumentController::class, 'store']
-    );
+        Route::get(
+            '/knowledge-bases/{knowledgeBase}/documents',
+            [DocumentController::class, 'index']
+        );
 
-    Route::post(
-        '/knowledge-bases/{knowledgeBase}/documents/{document}/process',
-        [DocumentController::class, 'process']
-    )->middleware('throttle:ai');
+        Route::post(
+            '/knowledge-bases/{knowledgeBase}/documents',
+            [DocumentController::class, 'store']
+        );
+
+        Route::post(
+            '/knowledge-bases/{knowledgeBase}/documents/{document}/process',
+            [DocumentController::class, 'process']
+        )->middleware('throttle:ai');
+
+    });
 
     /*
     |--------------------------------------------------------------------------
     | Conversation Attachments
     |--------------------------------------------------------------------------
+    |
+    | Upload files directly within a conversation.
+    |
+    | This endpoint automatically creates or reuses
+    | the conversation's internal knowledge base,
+    | stores the attachment and dispatches the
+    | document processing job.
+    |
+    | The regular knowledge base middleware does
+    | not apply to this endpoint.
+    |
     */
 
     Route::post(
