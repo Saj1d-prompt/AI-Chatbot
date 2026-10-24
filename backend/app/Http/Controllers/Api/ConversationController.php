@@ -50,8 +50,10 @@ class ConversationController extends Controller
     }
 
     /**
-     * Show a conversation and its attached
-     * knowledge base IDs.
+     * Show a conversation.
+     *
+     * Only expose regular knowledge base IDs to
+     * the frontend's manual knowledge base selector.
      */
     public function show(
         Request $request,
@@ -66,6 +68,7 @@ class ConversationController extends Controller
 
         $knowledgeBaseIds = $conversationModel
             ->knowledgeBases()
+            ->whereNull('knowledge_bases.conversation_id')
             ->pluck('knowledge_bases.id')
             ->map(fn ($id) => (int) $id)
             ->all();
@@ -124,10 +127,11 @@ class ConversationController extends Controller
     }
 
     /**
-     * Replace the knowledge bases attached
-     * to a conversation.
+     * Update only the regular knowledge bases
+     * selected manually by the user.
      *
-     * Passing an empty array removes all attachments.
+     * The internal chat attachment knowledge base
+     * must remain connected to its conversation.
      */
     public function updateKnowledgeBases(
         Request $request,
@@ -144,6 +148,7 @@ class ConversationController extends Controller
                 'array',
                 'max:20',
             ],
+
             'knowledge_base_ids.*' => [
                 'integer',
                 'min:1',
@@ -157,18 +162,22 @@ class ConversationController extends Controller
         );
 
         /*
-         * Check every requested knowledge base
-         * against the authenticated user's ownership.
+         * Only regular, reusable knowledge bases
+         * belonging to the authenticated user
+         * are allowed for manual selection.
+         *
+         * Internal chat knowledge bases are excluded.
          */
-        $ownedIds = $request
+        $ownedRegularIds = $request
             ->user()
             ->knowledgeBases()
+            ->whereNull('conversation_id')
             ->whereIn('id', $requestedIds)
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        if (count($ownedIds) !== count($requestedIds)) {
+        if (count($ownedRegularIds) !== count($requestedIds)) {
             throw ValidationException::withMessages([
                 'knowledge_base_ids' => [
                     'One or more selected knowledge bases are unavailable.',
@@ -177,15 +186,39 @@ class ConversationController extends Controller
         }
 
         /*
-         * Sync replaces the existing attachments.
-         * It also accepts [] to detach everything.
+         * Find the internal knowledge base belonging
+         * specifically to this conversation.
+         *
+         * It must remain attached even when users
+         * deselect all regular knowledge bases.
+         */
+        $internalKnowledgeBaseId = $conversationModel
+            ->attachmentKnowledgeBase()
+            ->value('id');
+
+        $idsToSync = $requestedIds;
+
+        if ($internalKnowledgeBaseId !== null) {
+            $idsToSync[] = (int) $internalKnowledgeBaseId;
+        }
+
+        /*
+         * Synchronize regular selections while
+         * preserving the conversation's internal
+         * attachment knowledge base.
          */
         $conversationModel
             ->knowledgeBases()
-            ->sync($requestedIds);
+            ->sync($idsToSync);
 
-        $attachedIds = $conversationModel
+        /*
+         * Return only manually selectable IDs.
+         * This keeps the frontend selector independent
+         * from automatic chat attachments.
+         */
+        $attachedRegularIds = $conversationModel
             ->knowledgeBases()
+            ->whereNull('knowledge_bases.conversation_id')
             ->pluck('knowledge_bases.id')
             ->map(fn ($id) => (int) $id)
             ->all();
@@ -193,13 +226,13 @@ class ConversationController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Conversation knowledge bases updated.',
-            'knowledge_base_ids' => $attachedIds,
+            'knowledge_base_ids' => $attachedRegularIds,
         ]);
     }
 
     /**
-     * Resolve conversations only through
-     * the authenticated user's ownership.
+     * Resolve conversations only through the
+     * authenticated user's ownership.
      */
     private function findOwnedConversation(
         Request $request,
