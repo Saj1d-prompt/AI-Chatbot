@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ConversationMessageController;
 use App\Http\Controllers\Api\ConversationAttachmentController;
 use App\Http\Controllers\Api\KnowledgeBaseController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\ConversationAttachmentStatusController;
 use App\Http\Middleware\EnsureRegularKnowledgeBase;
 use Illuminate\Support\Facades\Route;
 
@@ -205,5 +206,29 @@ Route::middleware('auth:sanctum')->group(function () {
         '/conversations/{conversation}/attachments',
         [ConversationAttachmentController::class, 'store']
     )->middleware('throttle:ai');
+
+    
+    /*
+    |--------------------------------------------------------------------------
+    | Conversation Attachments
+    |--------------------------------------------------------------------------
+    |
+    | These routes manage documents uploaded directly
+    | inside a conversation.
+    |
+    | Only the conversation owner can access them.
+    |
+    */
+
+    Route::get(
+        '/conversations/{conversation}/attachments',
+        [ConversationAttachmentStatusController::class, 'index']
+    );
+
+    Route::post(
+        '/conversations/{conversation}/attachments',
+        [ConversationAttachmentController::class, 'store']
+    )->middleware('throttle:ai');
+
 
 });
