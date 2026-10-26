@@ -103,3 +103,52 @@ export async function updateConversationKnowledgeBases(
 
   return response.data;
 }
+
+/*
+|--------------------------------------------------------------------------
+| Conversation Attachments
+|--------------------------------------------------------------------------
+*/
+
+/**
+ * Upload a TXT file directly into a conversation.
+ *
+ * Laravel automatically creates or reuses the
+ * conversation's private knowledge base and
+ * dispatches the document-processing job.
+ */
+export async function uploadConversationAttachment(
+  conversationId,
+  file
+) {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  const response = await apiClient.post(
+    `/conversations/${conversationId}/attachments`,
+    formData,
+    {
+      headers: {
+        // Let Axios/browser generate the multipart boundary.
+        "Content-Type": undefined,
+      },
+    }
+  );
+
+  return response.data;
+}
+
+/**
+ * Retrieve the processing status of all documents
+ * uploaded directly to one conversation.
+ */
+export async function getConversationAttachments(
+  conversationId
+) {
+  const response = await apiClient.get(
+    `/conversations/${conversationId}/attachments`
+  );
+
+  return response.data;
+}
