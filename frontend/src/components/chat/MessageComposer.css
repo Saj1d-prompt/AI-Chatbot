@@ -205,3 +205,179 @@
     transform: rotate(360deg);
   }
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Conversation Attachments
+|--------------------------------------------------------------------------
+*/
+
+.composer-hidden-file-input {
+  display: none;
+}
+
+.composer-attachments {
+  width: min(780px, 100%);
+  margin: 0 auto 10px;
+  padding: 11px 12px;
+
+  border: 1px solid #2b3036;
+  border-radius: 13px;
+
+  background: #14171b;
+}
+
+.composer-attachments-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 8px;
+
+  color: #aeb4bb;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.composer-attachment-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 25px;
+  height: 25px;
+
+  border: 0;
+  border-radius: 6px;
+
+  background: transparent;
+  color: #89939c;
+
+  cursor: pointer;
+}
+
+.composer-attachment-refresh:hover {
+  background: #252a2f;
+  color: #d1d5db;
+}
+
+.composer-attachment-refresh:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.composer-attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+
+  max-height: 145px;
+  overflow-y: auto;
+}
+
+.composer-attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  min-width: 0;
+  padding: 9px 10px;
+
+  border: 1px solid #30363d;
+  border-radius: 9px;
+
+  background: #1c2025;
+  color: #a9b1ba;
+}
+
+.composer-attachment-name {
+  flex: 1;
+  min-width: 0;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  font-size: 12px;
+}
+
+.composer-attachment-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  flex-shrink: 0;
+
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.composer-attachment-uploaded,
+.composer-attachment-processing {
+  color: #e9c46a;
+}
+
+.composer-attachment-ready {
+  color: #71ffb5;
+}
+
+.composer-attachment-failed {
+  color: #ff8585;
+}
+
+.composer-attachment-notice,
+.composer-attachment-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  width: min(780px, 100%);
+
+  margin: 0 auto 9px;
+  padding: 9px 12px;
+
+  border-radius: 9px;
+
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.composer-attachment-notice {
+  background: rgba(113, 255, 181, 0.07);
+  color: #a4e9c4;
+}
+
+.composer-attachment-error {
+  border: 1px solid rgba(255, 133, 133, 0.18);
+  background: rgba(255, 133, 133, 0.06);
+  color: #ff9a9a;
+}
+
+.composer-attachment-warning {
+  margin: 9px 0 0;
+
+  color: #ffad85;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.composer-icon-spin {
+  animation: composerAttachmentSpin 800ms linear infinite;
+}
+
+@keyframes composerAttachmentSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .composer-attachments {
+    border-radius: 11px;
+  }
+
+  .composer-attachment-item {
+    padding: 8px;
+  }
+}
