@@ -1,13 +1,17 @@
+
 <?php
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConversationController;
 use App\Http\Controllers\Api\ConversationMessageController;
 use App\Http\Controllers\Api\ConversationAttachmentController;
+use App\Http\Controllers\Api\ConversationAttachmentStatusController;
+use App\Http\Controllers\Api\ConversationAttachmentRetryController;
 use App\Http\Controllers\Api\KnowledgeBaseController;
 use App\Http\Controllers\Api\DocumentController;
-use App\Http\Controllers\Api\ConversationAttachmentStatusController;
+
 use App\Http\Middleware\EnsureRegularKnowledgeBase;
+
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -52,6 +56,7 @@ Route::prefix('auth')->group(function () {
             '/logout',
             [AuthController::class, 'logout']
         );
+
     });
 });
 
@@ -93,6 +98,19 @@ Route::middleware('auth:sanctum')->group(function () {
         '/conversations/{conversation}',
         [ConversationController::class, 'destroy']
     );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Conversation Knowledge Bases
+    |--------------------------------------------------------------------------
+    |
+    | Manage reusable knowledge bases manually selected
+    | for a conversation.
+    |
+    | Internal chat attachment knowledge bases remain
+    | attached automatically and cannot be manually selected.
+    |
+    */
 
     Route::put(
         '/conversations/{conversation}/knowledge-bases',
@@ -153,14 +171,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Knowledge Base Documents
+    | Regular Knowledge Base Documents
     |--------------------------------------------------------------------------
     |
-    | These endpoints are only available for regular,
+    | These routes are available only for regular,
     | reusable knowledge bases.
     |
-    | Internal chat attachment knowledge bases must
-    | not be accessed through these routes.
+    | Internal conversation attachment knowledge bases
+    | cannot be accessed through these endpoints.
     |
     */
 
@@ -168,16 +186,25 @@ Route::middleware('auth:sanctum')->group(function () {
         EnsureRegularKnowledgeBase::class,
     ])->group(function () {
 
+        /*
+         * List documents.
+         */
         Route::get(
             '/knowledge-bases/{knowledgeBase}/documents',
             [DocumentController::class, 'index']
         );
 
+        /*
+         * Upload a document.
+         */
         Route::post(
             '/knowledge-bases/{knowledgeBase}/documents',
             [DocumentController::class, 'store']
         );
 
+        /*
+         * Manually process a document when required.
+         */
         Route::post(
             '/knowledge-bases/{knowledgeBase}/documents/{document}/process',
             [DocumentController::class, 'process']
@@ -190,45 +217,49 @@ Route::middleware('auth:sanctum')->group(function () {
     | Conversation Attachments
     |--------------------------------------------------------------------------
     |
-    | Upload files directly within a conversation.
+    | These endpoints manage documents uploaded directly
+    | through the chat paperclip button.
     |
-    | This endpoint automatically creates or reuses
-    | the conversation's internal knowledge base,
-    | stores the attachment and dispatches the
-    | document processing job.
+    | Each conversation has its own internal knowledge base.
     |
-    | The regular knowledge base middleware does
-    | not apply to this endpoint.
+    | All operations require authentication, and the
+    | corresponding controllers enforce conversation
+    | ownership and document isolation.
     |
     */
 
-    Route::post(
-        '/conversations/{conversation}/attachments',
-        [ConversationAttachmentController::class, 'store']
-    )->middleware('throttle:ai');
-
-    
     /*
-    |--------------------------------------------------------------------------
-    | Conversation Attachments
-    |--------------------------------------------------------------------------
-    |
-    | These routes manage documents uploaded directly
-    | inside a conversation.
-    |
-    | Only the conversation owner can access them.
-    |
-    */
-
+     * GET:
+     * Retrieve conversation attachments and their
+     * processing statuses.
+     */
     Route::get(
         '/conversations/{conversation}/attachments',
         [ConversationAttachmentStatusController::class, 'index']
     );
 
+    /*
+     * POST:
+     * Upload a TXT document into a conversation.
+     *
+     * Automatically creates/reuses the internal
+     * knowledge base and queues document processing.
+     */
     Route::post(
         '/conversations/{conversation}/attachments',
         [ConversationAttachmentController::class, 'store']
     )->middleware('throttle:ai');
 
+    /*
+     * POST:
+     * Retry processing a failed chat attachment.
+     *
+     * Only documents with a failed status can
+     * be retried through this endpoint.
+     */
+    Route::post(
+        '/conversations/{conversation}/attachments/{document}/retry',
+        [ConversationAttachmentRetryController::class, 'retry']
+    )->middleware('throttle:ai');
 
 });
