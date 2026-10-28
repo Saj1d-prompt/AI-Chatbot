@@ -1,4 +1,3 @@
-
 import {
   useCallback,
   useEffect,
@@ -20,6 +19,7 @@ import {
 import {
   createConversation,
   getConversationAttachments,
+  retryConversationAttachment,
   uploadConversationAttachment,
 } from "../../services/api/conversationApi";
 
@@ -28,12 +28,6 @@ import "./MessageComposer.css";
 const MAX_TEXTAREA_HEIGHT = 180;
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 const POLLING_INTERVAL = 3000;
-
-/*
-|--------------------------------------------------------------------------
-| Attachment Helpers
-|--------------------------------------------------------------------------
-*/
 
 function isPendingAttachment(attachment) {
   return (
@@ -62,12 +56,10 @@ function getAttachmentStatusText(status) {
 }
 
 function getErrorMessage(error) {
-  const validationErrors =
-    error?.response?.data?.errors;
+  const errors = error?.response?.data?.errors;
 
-  if (validationErrors) {
-    const messages =
-      Object.values(validationErrors).flat();
+  if (errors) {
+    const messages = Object.values(errors).flat();
 
     if (messages.length > 0) {
       return messages.join(" ");
@@ -77,15 +69,9 @@ function getErrorMessage(error) {
   return (
     error?.response?.data?.message ||
     error?.message ||
-    "Unable to upload the document."
+    "Something went wrong. Please try again."
   );
 }
-
-/*
-|--------------------------------------------------------------------------
-| Message Composer
-|--------------------------------------------------------------------------
-*/
 
 function MessageComposer({
   value,
@@ -95,71 +81,41 @@ function MessageComposer({
   conversationId,
   onConversationCreated,
 }) {
-  /*
-   * DOM references.
-   */
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  /*
-   * Prevent stale API responses from one
-   * conversation affecting another.
-   */
   const requestVersionRef = useRef(0);
+  const activeConversationRef = useRef(conversationId);
 
-  const activeConversationRef = useRef(
-    conversationId
-  );
-
-  /*
-   * Prevent overlapping status requests
-   * and duplicate uploads.
-   */
   const refreshInProgressRef = useRef(false);
   const uploadInProgressRef = useRef(false);
+  const retryInProgressRef = useRef(false);
 
-  /*
-   * Attachment state.
-   */
-  const [
-    attachments,
-    setAttachments,
-  ] = useState([]);
-
-  const [
-    isUploading,
-    setIsUploading,
-  ] = useState(false);
-
+  const [attachments, setAttachments] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [
     isLoadingAttachments,
     setIsLoadingAttachments,
   ] = useState(false);
 
-  const [
-    attachmentError,
-    setAttachmentError,
-  ] = useState("");
+  const [retryingId, setRetryingId] = useState(null);
 
-  const [
-    attachmentNotice,
-    setAttachmentNotice,
-  ] = useState("");
+  const [attachmentError, setAttachmentError] =
+    useState("");
 
-  /*
-   * Detect unfinished document processing.
-   */
+  const [attachmentNotice, setAttachmentNotice] =
+    useState("");
+
   const hasPendingAttachments =
     attachments.some(isPendingAttachment);
 
-  /*
-   * Prevent messages from being sent while
-   * uploaded documents are still processing.
-   */
+  const isAttachmentBusy =
+    isUploading || retryingId !== null;
+
   const isSendDisabled =
     !value.trim() ||
     isLoading ||
-    isUploading ||
+    isAttachmentBusy ||
     isLoadingAttachments ||
     hasPendingAttachments;
 
@@ -183,12 +139,10 @@ function MessageComposer({
       MAX_TEXTAREA_HEIGHT
     );
 
-    textarea.style.height =
-      `${nextHeight}px`;
+    textarea.style.height = `${nextHeight}px`;
 
     textarea.style.overflowY =
-      textarea.scrollHeight >
-      MAX_TEXTAREA_HEIGHT
+      textarea.scrollHeight > MAX_TEXTAREA_HEIGHT
         ? "auto"
         : "hidden";
   };
@@ -199,7 +153,7 @@ function MessageComposer({
 
   /*
   |--------------------------------------------------------------------------
-  | Attachment Status API
+  | Refresh Attachments
   |--------------------------------------------------------------------------
   */
 
@@ -240,10 +194,6 @@ function MessageComposer({
           );
         }
 
-        /*
-         * Ignore responses belonging to
-         * a previous conversation.
-         */
         if (
           requestVersion !==
             requestVersionRef.current ||
@@ -254,8 +204,6 @@ function MessageComposer({
         }
 
         setAttachments(result.data);
-
-        setAttachmentError("");
       } catch (error) {
         if (
           requestVersion ===
@@ -263,9 +211,7 @@ function MessageComposer({
           activeConversationRef.current ===
             targetConversationId
         ) {
-          setAttachmentError(
-            getErrorMessage(error)
-          );
+          setAttachmentError(getErrorMessage(error));
         }
       } finally {
         if (
@@ -273,7 +219,6 @@ function MessageComposer({
           requestVersionRef.current
         ) {
           refreshInProgressRef.current = false;
-
           setIsLoadingAttachments(false);
         }
       }
@@ -288,46 +233,31 @@ function MessageComposer({
   */
 
   useEffect(() => {
-    /*
-     * Invalidate requests from the
-     * previously selected conversation.
-     */
     requestVersionRef.current += 1;
 
-    activeConversationRef.current =
-      conversationId;
-
+    activeConversationRef.current = conversationId;
     refreshInProgressRef.current = false;
 
     setAttachments([]);
     setAttachmentError("");
     setAttachmentNotice("");
+    setRetryingId(null);
 
     if (!conversationId) {
       setIsLoadingAttachments(false);
       return;
     }
 
-    /*
-     * Load files belonging only to
-     * the selected conversation.
-     */
-    refreshAttachments(
-      conversationId,
-      true
-    );
+    refreshAttachments(conversationId, true);
 
     return () => {
       requestVersionRef.current += 1;
     };
-  }, [
-    conversationId,
-    refreshAttachments,
-  ]);
+  }, [conversationId, refreshAttachments]);
 
   /*
   |--------------------------------------------------------------------------
-  | Automatic Status Polling
+  | Automatic Processing Status Polling
   |--------------------------------------------------------------------------
   */
 
@@ -341,19 +271,12 @@ function MessageComposer({
       return;
     }
 
-    const intervalId = window.setInterval(
-      () => {
-        refreshAttachments(
-          conversationId
-        );
-      },
-      POLLING_INTERVAL
-    );
+    const intervalId = window.setInterval(() => {
+      refreshAttachments(conversationId);
+    }, POLLING_INTERVAL);
 
     return () => {
-      window.clearInterval(
-        intervalId
-      );
+      window.clearInterval(intervalId);
     };
   }, [
     conversationId,
@@ -394,59 +317,39 @@ function MessageComposer({
 
   /*
   |--------------------------------------------------------------------------
-  | Create Conversation Before Upload
+  | Automatically Create Conversation
   |--------------------------------------------------------------------------
   */
 
   const ensureConversation = async () => {
-    /*
-     * Existing conversation:
-     * upload into that conversation.
-     */
     if (activeConversationRef.current) {
       return activeConversationRef.current;
     }
 
     if (
-      typeof onConversationCreated !==
-      "function"
+      typeof onConversationCreated !== "function"
     ) {
       throw new Error(
         "Unable to create a conversation for this attachment."
       );
     }
 
-    /*
-     * STEP 5 RELIABILITY FIX:
-     *
-     * Record the current request version
-     * before making the API request.
-     */
     const startingVersion =
       requestVersionRef.current;
 
-    const result =
-      await createConversation();
+    const result = await createConversation();
 
     if (
       !result.success ||
       !result.conversation?.id
     ) {
       throw new Error(
-        "Unable to create a new conversation."
+        "Unable to create a conversation."
       );
     }
 
-    const conversation =
-      result.conversation;
+    const conversation = result.conversation;
 
-    /*
-     * STEP 5 RELIABILITY FIX:
-     *
-     * If the user switched conversations
-     * while this request was pending,
-     * do not replace their selected chat.
-     */
     if (
       startingVersion !==
       requestVersionRef.current
@@ -456,36 +359,22 @@ function MessageComposer({
       );
     }
 
-    /*
-     * Register the new conversation
-     * with ChatPage.
-     */
-    activeConversationRef.current =
-      conversation.id;
+    activeConversationRef.current = conversation.id;
 
-    onConversationCreated(
-      conversation
-    );
+    onConversationCreated(conversation);
 
     return conversation.id;
   };
 
   /*
   |--------------------------------------------------------------------------
-  | File Upload
+  | Upload Attachment
   |--------------------------------------------------------------------------
   */
 
-  const handleFileChange = async (
-    event
-  ) => {
-    const file =
-      event.target.files?.[0];
+  const handleFileChange = async (event) => {
+    const file = event.target.files?.[0];
 
-    /*
-     * Allow the same file to be
-     * selected again later.
-     */
     event.target.value = "";
 
     if (!file) {
@@ -495,28 +384,19 @@ function MessageComposer({
     setAttachmentError("");
     setAttachmentNotice("");
 
-    /*
-     * Frontend validation.
-     */
     if (
-      !file.name
-        .toLowerCase()
-        .endsWith(".txt")
+      !file.name.toLowerCase().endsWith(".txt")
     ) {
       setAttachmentError(
         "Only TXT documents are supported."
       );
-
       return;
     }
 
-    if (
-      file.size > MAX_FILE_SIZE
-    ) {
+    if (file.size > MAX_FILE_SIZE) {
       setAttachmentError(
         "The document must be 2 MB or smaller."
       );
-
       return;
     }
 
@@ -524,15 +404,12 @@ function MessageComposer({
       setAttachmentError(
         "The selected document is empty."
       );
-
       return;
     }
 
-    /*
-     * Avoid duplicate uploads.
-     */
     if (
       uploadInProgressRef.current ||
+      retryInProgressRef.current ||
       isLoading
     ) {
       return;
@@ -544,17 +421,8 @@ function MessageComposer({
     let targetConversationId = null;
 
     try {
-      /*
-       * Automatically create a conversation
-       * when attaching a file from a new chat.
-       */
-      targetConversationId =
-        await ensureConversation();
+      targetConversationId = await ensureConversation();
 
-      /*
-       * Send multipart/form-data
-       * to the Laravel backend.
-       */
       const result =
         await uploadConversationAttachment(
           targetConversationId,
@@ -570,46 +438,26 @@ function MessageComposer({
         );
       }
 
-      /*
-       * Only update the current chat's UI.
-       */
       if (
         activeConversationRef.current ===
         targetConversationId
       ) {
-        /*
-         * STEP 5 RELIABILITY FIX:
-         *
-         * Display the new document
-         * immediately as Queued.
-         *
-         * We do not need to wait for
-         * the first status API request.
-         */
         setAttachments((current) => [
           ...current.filter(
-            (attachment) =>
-              attachment.id !==
-              result.data.id
+            (item) =>
+              item.id !== result.data.id
           ),
           {
             ...result.data,
-            status:
-              result.data.status ||
-              "uploaded",
+            status: result.data.status || "uploaded",
             chunks_count: 0,
           },
         ]);
 
         setAttachmentNotice(
-          `"${file.name}" uploaded. ` +
-          "Nexus is preparing the document."
+          `"${file.name}" uploaded. Processing queued.`
         );
 
-        /*
-         * Synchronize status with
-         * the Laravel database.
-         */
         await refreshAttachments(
           targetConversationId
         );
@@ -632,6 +480,108 @@ function MessageComposer({
 
   /*
   |--------------------------------------------------------------------------
+  | NEW — Retry Failed Attachment
+  |--------------------------------------------------------------------------
+  */
+
+  const handleRetryAttachment = async (attachment) => {
+    const targetConversationId =
+      activeConversationRef.current;
+
+    if (
+      !targetConversationId ||
+      attachment.status !== "failed" ||
+      uploadInProgressRef.current ||
+      retryInProgressRef.current ||
+      isLoading
+    ) {
+      return;
+    }
+
+    retryInProgressRef.current = true;
+
+    const requestVersion =
+      requestVersionRef.current;
+
+    setRetryingId(attachment.id);
+    setAttachmentError("");
+    setAttachmentNotice("");
+
+    try {
+      const result =
+        await retryConversationAttachment(
+          targetConversationId,
+          attachment.id
+        );
+
+      if (
+        !result.success ||
+        result.data?.id !== attachment.id
+      ) {
+        throw new Error(
+          "The retry request was not confirmed."
+        );
+      }
+
+      /*
+       * Ignore responses if the user opened
+       * a different conversation meanwhile.
+       */
+      if (
+        requestVersion !==
+          requestVersionRef.current ||
+        activeConversationRef.current !==
+          targetConversationId
+      ) {
+        return;
+      }
+
+      /*
+       * Show Queued immediately.
+       * The polling system will take over.
+       */
+      setAttachments((current) =>
+        current.map((item) =>
+          item.id === attachment.id
+            ? {
+                ...item,
+                status: "uploaded",
+                error_message: null,
+              }
+            : item
+        )
+      );
+
+      setAttachmentNotice(
+        `"${attachment.original_name}" queued for retry.`
+      );
+
+      await refreshAttachments(
+        targetConversationId
+      );
+    } catch (error) {
+      if (
+        requestVersion ===
+          requestVersionRef.current &&
+        activeConversationRef.current ===
+          targetConversationId
+      ) {
+        setAttachmentError(
+          getErrorMessage(error)
+        );
+
+        await refreshAttachments(
+          targetConversationId
+        );
+      }
+    } finally {
+      retryInProgressRef.current = false;
+      setRetryingId(null);
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
   | Manual Attachment Refresh
   |--------------------------------------------------------------------------
   */
@@ -640,6 +590,8 @@ function MessageComposer({
     if (!conversationId) {
       return;
     }
+
+    setAttachmentError("");
 
     refreshAttachments(
       conversationId,
@@ -655,10 +607,6 @@ function MessageComposer({
 
   return (
     <div className="composer-wrapper">
-      {/*
-        Hidden file picker.
-        Opened by the paperclip button.
-      */}
       <input
         ref={fileInputRef}
         type="file"
@@ -668,26 +616,18 @@ function MessageComposer({
         aria-label="Choose a TXT document"
       />
 
-      {/*
-        Conversation attachment list.
-      */}
       {attachments.length > 0 && (
         <div className="composer-attachments">
           <div className="composer-attachments-header">
             <span>
-              Chat attachments (
-              {attachments.length})
+              Chat attachments ({attachments.length})
             </span>
 
             <button
               type="button"
               className="composer-attachment-refresh"
-              onClick={
-                handleManualRefresh
-              }
-              disabled={
-                isLoadingAttachments
-              }
+              onClick={handleManualRefresh}
+              disabled={isLoadingAttachments}
               aria-label="Refresh attachment statuses"
               title="Refresh attachment statuses"
             >
@@ -703,8 +643,11 @@ function MessageComposer({
           </div>
 
           <div className="composer-attachment-list">
-            {attachments.map(
-              (attachment) => (
+            {attachments.map((attachment) => {
+              const isRetrying =
+                retryingId === attachment.id;
+
+              return (
                 <div
                   className="composer-attachment-item"
                   key={attachment.id}
@@ -721,51 +664,69 @@ function MessageComposer({
                       `composer-attachment-${attachment.status}`
                     }
                   >
-                    {isPendingAttachment(
-                      attachment
-                    ) ? (
+                    {isPendingAttachment(attachment) ? (
                       <LoaderCircle
                         size={13}
                         className="composer-icon-spin"
                       />
-                    ) : attachment.status ===
-                      "ready" ? (
-                      <CheckCircle2
-                        size={13}
-                      />
+                    ) : attachment.status === "ready" ? (
+                      <CheckCircle2 size={13} />
                     ) : (
-                      <CircleAlert
-                        size={13}
-                      />
+                      <CircleAlert size={13} />
                     )}
 
                     {getAttachmentStatusText(
                       attachment.status
                     )}
                   </span>
+
+                  {attachment.status === "failed" && (
+                    <button
+                      type="button"
+                      className="composer-attachment-retry"
+                      onClick={() =>
+                        handleRetryAttachment(attachment)
+                      }
+                      disabled={
+                        isAttachmentBusy ||
+                        isLoading
+                      }
+                      title="Retry processing"
+                      aria-label={
+                        `Retry processing ${attachment.original_name}`
+                      }
+                    >
+                      {isRetrying ? (
+                        <LoaderCircle
+                          size={14}
+                          className="composer-icon-spin"
+                        />
+                      ) : (
+                        <RefreshCw size={14} />
+                      )}
+
+                      <span>
+                        {isRetrying ? "Retrying..." : "Retry"}
+                      </span>
+                    </button>
+                  )}
                 </div>
-              )
-            )}
+              );
+            })}
           </div>
 
           {attachments.some(
             (attachment) =>
-              attachment.status ===
-              "failed"
+              attachment.status === "failed"
           ) && (
             <p className="composer-attachment-warning">
-              One or more documents
-              failed processing.
-              Reupload the affected
-              file to try again.
+              One or more documents failed processing.
+              Use Retry to process an existing file again.
             </p>
           )}
         </div>
       )}
 
-      {/*
-        Uploading indicator.
-      */}
       {isUploading && (
         <div
           className="composer-attachment-notice"
@@ -780,45 +741,29 @@ function MessageComposer({
         </div>
       )}
 
-      {/*
-        Upload success notification.
-      */}
-      {!isUploading &&
-        attachmentNotice && (
-          <div
-            className="composer-attachment-notice"
-            role="status"
-          >
-            {attachmentNotice}
-          </div>
-        )}
+      {!isUploading && attachmentNotice && (
+        <div
+          className="composer-attachment-notice"
+          role="status"
+        >
+          {attachmentNotice}
+        </div>
+      )}
 
-      {/*
-        Upload or status error.
-      */}
       {attachmentError && (
         <div
           className="composer-attachment-error"
           role="alert"
         >
-          <CircleAlert
-            size={15}
-          />
+          <CircleAlert size={15} />
 
-          <span>
-            {attachmentError}
-          </span>
+          <span>{attachmentError}</span>
         </div>
       )}
 
-      {/*
-        Existing message composer.
-      */}
       <form
         className="message-composer"
-        onSubmit={
-          handleFormSubmit
-        }
+        onSubmit={handleFormSubmit}
       >
         <textarea
           ref={textareaRef}
@@ -830,24 +775,15 @@ function MessageComposer({
               : "Ask Nexus anything..."
           }
           aria-label="Message"
-          disabled={
-            isLoading
-          }
+          disabled={isLoading}
           onChange={(event) =>
-            onChange(
-              event.target.value
-            )
+            onChange(event.target.value)
           }
-          onKeyDown={
-            handleKeyDown
-          }
+          onKeyDown={handleKeyDown}
         />
 
         <div className="composer-toolbar">
           <div className="composer-tools">
-            {/*
-              Functional attachment button.
-            */}
             <button
               type="button"
               className="composer-tool-button"
@@ -855,43 +791,29 @@ function MessageComposer({
               title="Attach TXT document"
               disabled={
                 isLoading ||
-                isUploading
+                isAttachmentBusy
               }
               onClick={() =>
                 fileInputRef.current?.click()
               }
             >
-              <Paperclip
-                size={17}
-              />
+              <Paperclip size={17} />
             </button>
 
-            {/*
-              Existing chat settings button.
-            */}
             <button
               type="button"
               className="composer-tool-button"
               aria-label="Chat settings"
               disabled={isLoading}
             >
-              <SlidersHorizontal
-                size={16}
-              />
+              <SlidersHorizontal size={16} />
             </button>
           </div>
 
-          {/*
-            Send button.
-            Disabled until pending
-            attachments are ready.
-          */}
           <button
             className="composer-send-button"
             type="submit"
-            disabled={
-              isSendDisabled
-            }
+            disabled={isSendDisabled}
             aria-label="Send message"
             title={
               hasPendingAttachments
@@ -914,9 +836,6 @@ function MessageComposer({
         </div>
       </form>
 
-      {/*
-        Existing composer footer.
-      */}
       <div className="composer-footer">
         <span>
           Shift + Enter for new line
@@ -927,8 +846,7 @@ function MessageComposer({
         </span>
 
         <span>
-          AI can make mistakes.
-          Verify important information.
+          AI can make mistakes. Verify important information.
         </span>
       </div>
     </div>
