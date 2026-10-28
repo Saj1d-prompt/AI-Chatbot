@@ -381,3 +381,59 @@
     padding: 8px;
   }
 }
+
+
+/*
+|--------------------------------------------------------------------------
+| Attachment Retry Button — Step 5.7.2
+|--------------------------------------------------------------------------
+*/
+
+.composer-attachment-retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+
+  flex-shrink: 0;
+
+  padding: 6px 9px;
+
+  border: 1px solid #3a4148;
+  border-radius: 7px;
+
+  background: #252b31;
+  color: #e0e5e9;
+
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.composer-attachment-retry:not(:disabled):hover {
+  border-color: #71ffb5;
+  background: rgba(113, 255, 181, 0.08);
+  color: #71ffb5;
+}
+
+.composer-attachment-retry:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 520px) {
+  .composer-attachment-retry {
+    padding: 6px;
+  }
+
+  .composer-attachment-retry span {
+    display: none;
+  }
+}
