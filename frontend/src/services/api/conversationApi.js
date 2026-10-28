@@ -3,7 +3,6 @@ import apiClient from "./apiClient";
 
 export async function getConversations() {
   const response = await apiClient.get("/conversations");
-
   return response.data;
 }
 
@@ -112,10 +111,6 @@ export async function updateConversationKnowledgeBases(
 
 /**
  * Upload a TXT file directly into a conversation.
- *
- * Laravel automatically creates or reuses the
- * conversation's private knowledge base and
- * dispatches the document-processing job.
  */
 export async function uploadConversationAttachment(
   conversationId,
@@ -130,7 +125,6 @@ export async function uploadConversationAttachment(
     formData,
     {
       headers: {
-        // Let Axios/browser generate the multipart boundary.
         "Content-Type": undefined,
       },
     }
@@ -140,14 +134,29 @@ export async function uploadConversationAttachment(
 }
 
 /**
- * Retrieve the processing status of all documents
- * uploaded directly to one conversation.
+ * Fetch the current attachment list and processing statuses.
  */
 export async function getConversationAttachments(
   conversationId
 ) {
   const response = await apiClient.get(
     `/conversations/${conversationId}/attachments`
+  );
+
+  return response.data;
+}
+
+/**
+ * Retry processing an existing failed attachment.
+ *
+ * Reuses the original document record and stored file.
+ */
+export async function retryConversationAttachment(
+  conversationId,
+  documentId
+) {
+  const response = await apiClient.post(
+    `/conversations/${conversationId}/attachments/${documentId}/retry`
   );
 
   return response.data;
