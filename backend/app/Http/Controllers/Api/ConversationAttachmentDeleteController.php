@@ -11,12 +11,7 @@ use RuntimeException;
 
 class ConversationAttachmentDeleteController extends Controller
 {
-    /**
-     * Remove one document uploaded directly
-     * into a conversation.
-     *
-     * Only the conversation owner can delete it.
-     */
+
     public function destroy(
         Request $request,
         $conversation,
