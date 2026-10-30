@@ -46,23 +46,12 @@ class ConversationAttachmentDeleteController extends Controller
             $knowledgeBase,
             $document
         ) {
-            /*
-             * Lock the document record to prevent
-             * simultaneous requests from deleting
-             * the same attachment.
-             */
             $attachment = $knowledgeBase
                 ->documents()
                 ->whereKey($document)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            /*
-             * Protect active document processing.
-             *
-             * Only completed or failed documents
-             * can be removed in this phase.
-             */
             if (!in_array(
                 $attachment->status,
                 ['ready', 'failed'],
