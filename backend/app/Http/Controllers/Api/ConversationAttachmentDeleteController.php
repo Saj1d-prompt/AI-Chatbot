@@ -69,30 +69,8 @@ class ConversationAttachmentDeleteController extends Controller
              */
             $filePath = $attachment->file_path;
 
-            /*
-             * 4. Delete the document record.
-             *
-             * Database foreign key cascades remove:
-             *
-             * - document_chunks
-             * - message_sources referencing those chunks
-             *
-             * This ensures future retrieval cannot
-             * find this document's embeddings.
-             */
             $attachment->delete();
 
-            /*
-             * 5. Delete the physical TXT file from
-             * Laravel's private local storage.
-             *
-             * A missing file does not prevent
-             * cleanup of an existing DB record.
-             *
-             * If storage deletion explicitly fails,
-             * throw an exception to roll back the
-             * database transaction.
-             */
             $disk = Storage::disk('local');
 
             if (
