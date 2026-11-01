@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ConversationAttachmentStatusController;
 use App\Http\Controllers\Api\ConversationAttachmentRetryController;
 use App\Http\Controllers\Api\KnowledgeBaseController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\ConversationAttachmentDeleteController;
 
 use App\Http\Middleware\EnsureRegularKnowledgeBase;
 
@@ -260,6 +261,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post(
         '/conversations/{conversation}/attachments/{document}/retry',
         [ConversationAttachmentRetryController::class, 'retry']
+    )->middleware('throttle:ai');
+
+    /*
+    * DELETE:
+    * Remove one completed or failed
+    * conversation attachment.
+    */
+    Route::delete(
+        '/conversations/{conversation}/attachments/{document}',
+        [ConversationAttachmentDeleteController::class, 'destroy']
     )->middleware('throttle:ai');
 
 });
