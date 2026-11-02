@@ -14,10 +14,12 @@ import {
   Paperclip,
   RefreshCw,
   SlidersHorizontal,
+  X,
 } from "lucide-react";
 
 import {
   createConversation,
+  deleteConversationAttachment,
   getConversationAttachments,
   retryConversationAttachment,
   uploadConversationAttachment,
@@ -29,10 +31,23 @@ const MAX_TEXTAREA_HEIGHT = 180;
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 const POLLING_INTERVAL = 3000;
 
+/*
+|--------------------------------------------------------------------------
+| Attachment Helpers
+|--------------------------------------------------------------------------
+*/
+
 function isPendingAttachment(attachment) {
   return (
     attachment.status === "uploaded" ||
     attachment.status === "processing"
+  );
+}
+
+function isRemovableAttachment(attachment) {
+  return (
+    attachment.status === "ready" ||
+    attachment.status === "failed"
   );
 }
 
@@ -73,6 +88,12 @@ function getErrorMessage(error) {
   );
 }
 
+/*
+|--------------------------------------------------------------------------
+| Message Composer
+|--------------------------------------------------------------------------
+*/
+
 function MessageComposer({
   value,
   onChange,
@@ -81,6 +102,12 @@ function MessageComposer({
   conversationId,
   onConversationCreated,
 }) {
+  /*
+  |--------------------------------------------------------------------------
+  | Refs
+  |--------------------------------------------------------------------------
+  */
+
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -90,15 +117,31 @@ function MessageComposer({
   const refreshInProgressRef = useRef(false);
   const uploadInProgressRef = useRef(false);
   const retryInProgressRef = useRef(false);
+  const deleteInProgressRef = useRef(false);
+
+  /*
+   * Prevent a refresh that started before deletion
+   * from restoring an attachment already removed.
+   */
+  const deletedAttachmentIdsRef = useRef(new Set());
+
+  /*
+  |--------------------------------------------------------------------------
+  | State
+  |--------------------------------------------------------------------------
+  */
 
   const [attachments, setAttachments] = useState([]);
+
   const [isUploading, setIsUploading] = useState(false);
+
   const [
     isLoadingAttachments,
     setIsLoadingAttachments,
   ] = useState(false);
 
   const [retryingId, setRetryingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const [attachmentError, setAttachmentError] =
     useState("");
@@ -106,11 +149,19 @@ function MessageComposer({
   const [attachmentNotice, setAttachmentNotice] =
     useState("");
 
+  /*
+  |--------------------------------------------------------------------------
+  | Derived State
+  |--------------------------------------------------------------------------
+  */
+
   const hasPendingAttachments =
     attachments.some(isPendingAttachment);
 
   const isAttachmentBusy =
-    isUploading || retryingId !== null;
+    isUploading ||
+    retryingId !== null ||
+    deletingId !== null;
 
   const isSendDisabled =
     !value.trim() ||
@@ -153,7 +204,7 @@ function MessageComposer({
 
   /*
   |--------------------------------------------------------------------------
-  | Refresh Attachments
+  | Refresh Attachment Statuses
   |--------------------------------------------------------------------------
   */
 
@@ -194,6 +245,10 @@ function MessageComposer({
           );
         }
 
+        /*
+         * Ignore stale responses after switching
+         * to a different conversation.
+         */
         if (
           requestVersion !==
             requestVersionRef.current ||
@@ -203,7 +258,18 @@ function MessageComposer({
           return;
         }
 
-        setAttachments(result.data);
+        /*
+         * A previous refresh must not reinsert
+         * an attachment that was just deleted.
+         */
+        setAttachments(
+          result.data.filter(
+            (attachment) =>
+              !deletedAttachmentIdsRef.current.has(
+                attachment.id
+              )
+          )
+        );
       } catch (error) {
         if (
           requestVersion ===
@@ -211,7 +277,9 @@ function MessageComposer({
           activeConversationRef.current ===
             targetConversationId
         ) {
-          setAttachmentError(getErrorMessage(error));
+          setAttachmentError(
+            getErrorMessage(error)
+          );
         }
       } finally {
         if (
@@ -236,28 +304,38 @@ function MessageComposer({
     requestVersionRef.current += 1;
 
     activeConversationRef.current = conversationId;
+
     refreshInProgressRef.current = false;
+    deletedAttachmentIdsRef.current = new Set();
 
     setAttachments([]);
     setAttachmentError("");
     setAttachmentNotice("");
+
     setRetryingId(null);
+    setDeletingId(null);
 
     if (!conversationId) {
       setIsLoadingAttachments(false);
       return;
     }
 
-    refreshAttachments(conversationId, true);
+    refreshAttachments(
+      conversationId,
+      true
+    );
 
     return () => {
       requestVersionRef.current += 1;
     };
-  }, [conversationId, refreshAttachments]);
+  }, [
+    conversationId,
+    refreshAttachments,
+  ]);
 
   /*
   |--------------------------------------------------------------------------
-  | Automatic Processing Status Polling
+  | Automatic Status Polling
   |--------------------------------------------------------------------------
   */
 
@@ -288,7 +366,7 @@ function MessageComposer({
 
   /*
   |--------------------------------------------------------------------------
-  | Keyboard and Form Submission
+  | Form Submission
   |--------------------------------------------------------------------------
   */
 
@@ -350,6 +428,11 @@ function MessageComposer({
 
     const conversation = result.conversation;
 
+    /*
+     * Cancel attaching a file if the user
+     * switched conversations while the new
+     * conversation was being created.
+     */
     if (
       startingVersion !==
       requestVersionRef.current
@@ -359,7 +442,8 @@ function MessageComposer({
       );
     }
 
-    activeConversationRef.current = conversation.id;
+    activeConversationRef.current =
+      conversation.id;
 
     onConversationCreated(conversation);
 
@@ -368,13 +452,17 @@ function MessageComposer({
 
   /*
   |--------------------------------------------------------------------------
-  | Upload Attachment
+  | Upload TXT Attachment
   |--------------------------------------------------------------------------
   */
 
   const handleFileChange = async (event) => {
     const file = event.target.files?.[0];
 
+    /*
+     * Allow the same file to be selected again
+     * if an upload fails.
+     */
     event.target.value = "";
 
     if (!file) {
@@ -410,6 +498,7 @@ function MessageComposer({
     if (
       uploadInProgressRef.current ||
       retryInProgressRef.current ||
+      deleteInProgressRef.current ||
       isLoading
     ) {
       return;
@@ -421,7 +510,8 @@ function MessageComposer({
     let targetConversationId = null;
 
     try {
-      targetConversationId = await ensureConversation();
+      targetConversationId =
+        await ensureConversation();
 
       const result =
         await uploadConversationAttachment(
@@ -442,6 +532,10 @@ function MessageComposer({
         activeConversationRef.current ===
         targetConversationId
       ) {
+        /*
+         * Show the queued attachment immediately
+         * while the processing job runs.
+         */
         setAttachments((current) => [
           ...current.filter(
             (item) =>
@@ -449,7 +543,9 @@ function MessageComposer({
           ),
           {
             ...result.data,
-            status: result.data.status || "uploaded",
+            status:
+              result.data.status ||
+              "uploaded",
             chunks_count: 0,
           },
         ]);
@@ -480,11 +576,13 @@ function MessageComposer({
 
   /*
   |--------------------------------------------------------------------------
-  | NEW — Retry Failed Attachment
+  | Retry Failed Attachment
   |--------------------------------------------------------------------------
   */
 
-  const handleRetryAttachment = async (attachment) => {
+  const handleRetryAttachment = async (
+    attachment
+  ) => {
     const targetConversationId =
       activeConversationRef.current;
 
@@ -493,6 +591,7 @@ function MessageComposer({
       attachment.status !== "failed" ||
       uploadInProgressRef.current ||
       retryInProgressRef.current ||
+      deleteInProgressRef.current ||
       isLoading
     ) {
       return;
@@ -523,10 +622,6 @@ function MessageComposer({
         );
       }
 
-      /*
-       * Ignore responses if the user opened
-       * a different conversation meanwhile.
-       */
       if (
         requestVersion !==
           requestVersionRef.current ||
@@ -537,8 +632,8 @@ function MessageComposer({
       }
 
       /*
-       * Show Queued immediately.
-       * The polling system will take over.
+       * Display Queued immediately.
+       * Polling will update the status automatically.
        */
       setAttachments((current) =>
         current.map((item) =>
@@ -576,7 +671,137 @@ function MessageComposer({
       }
     } finally {
       retryInProgressRef.current = false;
-      setRetryingId(null);
+
+      if (
+        requestVersion ===
+          requestVersionRef.current
+      ) {
+        setRetryingId(null);
+      }
+    }
+  };
+
+  /*
+  |--------------------------------------------------------------------------
+  | Delete Chat Attachment
+  |--------------------------------------------------------------------------
+  */
+
+  const handleDeleteAttachment = async (
+    attachment
+  ) => {
+    const targetConversationId =
+      activeConversationRef.current;
+
+    /*
+     * The backend only allows removal of
+     * Ready or Failed attachments.
+     */
+    if (
+      !targetConversationId ||
+      !isRemovableAttachment(attachment) ||
+      uploadInProgressRef.current ||
+      retryInProgressRef.current ||
+      deleteInProgressRef.current ||
+      isLoading
+    ) {
+      return;
+    }
+
+    /*
+     * Ask for confirmation before permanently
+     * removing the document.
+     */
+    const confirmed = window.confirm(
+      `Permanently remove "${attachment.original_name}"?\n\n` +
+      "Nexus will no longer retrieve information " +
+      "from this document in future responses."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    deleteInProgressRef.current = true;
+
+    const requestVersion =
+      requestVersionRef.current;
+
+    setDeletingId(attachment.id);
+    setAttachmentError("");
+    setAttachmentNotice("");
+
+    try {
+      const result =
+        await deleteConversationAttachment(
+          targetConversationId,
+          attachment.id
+        );
+
+      if (!result.success) {
+        throw new Error(
+          "The attachment deletion was not confirmed."
+        );
+      }
+
+      /*
+       * Ignore the result if the active
+       * conversation has changed.
+       */
+      if (
+        requestVersion !==
+          requestVersionRef.current ||
+        activeConversationRef.current !==
+          targetConversationId
+      ) {
+        return;
+      }
+
+      /*
+       * Keep stale status responses from bringing
+       * a deleted attachment back into the UI.
+       */
+      deletedAttachmentIdsRef.current.add(
+        attachment.id
+      );
+
+      /*
+       * Remove the attachment from the screen.
+       */
+      setAttachments((current) =>
+        current.filter(
+          (item) =>
+            item.id !== attachment.id
+        )
+      );
+
+      setAttachmentNotice(
+        `"${attachment.original_name}" was removed.`
+      );
+    } catch (error) {
+      if (
+        requestVersion ===
+          requestVersionRef.current &&
+        activeConversationRef.current ===
+          targetConversationId
+      ) {
+        setAttachmentError(
+          getErrorMessage(error)
+        );
+
+        await refreshAttachments(
+          targetConversationId
+        );
+      }
+    } finally {
+      deleteInProgressRef.current = false;
+
+      if (
+        requestVersion ===
+          requestVersionRef.current
+      ) {
+        setDeletingId(null);
+      }
     }
   };
 
@@ -607,6 +832,7 @@ function MessageComposer({
 
   return (
     <div className="composer-wrapper">
+      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -616,6 +842,7 @@ function MessageComposer({
         aria-label="Choose a TXT document"
       />
 
+      {/* Attachment list */}
       {attachments.length > 0 && (
         <div className="composer-attachments">
           <div className="composer-attachments-header">
@@ -647,17 +874,24 @@ function MessageComposer({
               const isRetrying =
                 retryingId === attachment.id;
 
+              const isDeleting =
+                deletingId === attachment.id;
+
               return (
                 <div
                   className="composer-attachment-item"
                   key={attachment.id}
                 >
-                  <FileText size={17} />
+                  <FileText
+                    size={17}
+                    className="composer-attachment-file-icon"
+                  />
 
                   <span className="composer-attachment-name">
                     {attachment.original_name}
                   </span>
 
+                  {/* Processing status */}
                   <span
                     className={
                       "composer-attachment-status " +
@@ -680,12 +914,15 @@ function MessageComposer({
                     )}
                   </span>
 
+                  {/* Retry button */}
                   {attachment.status === "failed" && (
                     <button
                       type="button"
                       className="composer-attachment-retry"
                       onClick={() =>
-                        handleRetryAttachment(attachment)
+                        handleRetryAttachment(
+                          attachment
+                        )
                       }
                       disabled={
                         isAttachmentBusy ||
@@ -706,8 +943,44 @@ function MessageComposer({
                       )}
 
                       <span>
-                        {isRetrying ? "Retrying..." : "Retry"}
+                        {isRetrying
+                          ? "Retrying..."
+                          : "Retry"}
                       </span>
+                    </button>
+                  )}
+
+                  {/* Remove button */}
+                  {isRemovableAttachment(
+                    attachment
+                  ) && (
+                    <button
+                      type="button"
+                      className="composer-attachment-delete"
+                      onClick={() =>
+                        handleDeleteAttachment(
+                          attachment
+                        )
+                      }
+                      disabled={
+                        isAttachmentBusy ||
+                        isLoading
+                      }
+                      title={
+                        `Remove ${attachment.original_name}`
+                      }
+                      aria-label={
+                        `Remove ${attachment.original_name}`
+                      }
+                    >
+                      {isDeleting ? (
+                        <LoaderCircle
+                          size={15}
+                          className="composer-icon-spin"
+                        />
+                      ) : (
+                        <X size={15} />
+                      )}
                     </button>
                   )}
                 </div>
@@ -715,18 +988,21 @@ function MessageComposer({
             })}
           </div>
 
+          {/* Processing failure notice */}
           {attachments.some(
             (attachment) =>
               attachment.status === "failed"
           ) && (
             <p className="composer-attachment-warning">
               One or more documents failed processing.
-              Use Retry to process an existing file again.
+              Use Retry to process an existing file
+              again, or remove the failed attachment.
             </p>
           )}
         </div>
       )}
 
+      {/* Upload progress */}
       {isUploading && (
         <div
           className="composer-attachment-notice"
@@ -736,11 +1012,11 @@ function MessageComposer({
             size={14}
             className="composer-icon-spin"
           />
-
-          Uploading document...
+          <span>Uploading document...</span>
         </div>
       )}
 
+      {/* Success notice */}
       {!isUploading && attachmentNotice && (
         <div
           className="composer-attachment-notice"
@@ -750,6 +1026,7 @@ function MessageComposer({
         </div>
       )}
 
+      {/* Error message */}
       {attachmentError && (
         <div
           className="composer-attachment-error"
@@ -757,10 +1034,13 @@ function MessageComposer({
         >
           <CircleAlert size={15} />
 
-          <span>{attachmentError}</span>
+          <span>
+            {attachmentError}
+          </span>
         </div>
       )}
 
+      {/* Message input */}
       <form
         className="message-composer"
         onSubmit={handleFormSubmit}
@@ -784,6 +1064,7 @@ function MessageComposer({
 
         <div className="composer-toolbar">
           <div className="composer-tools">
+            {/* Attach file */}
             <button
               type="button"
               className="composer-tool-button"
@@ -800,6 +1081,7 @@ function MessageComposer({
               <Paperclip size={17} />
             </button>
 
+            {/* Existing chat settings control */}
             <button
               type="button"
               className="composer-tool-button"
@@ -810,6 +1092,7 @@ function MessageComposer({
             </button>
           </div>
 
+          {/* Send message */}
           <button
             className="composer-send-button"
             type="submit"
@@ -836,6 +1119,7 @@ function MessageComposer({
         </div>
       </form>
 
+      {/* Footer */}
       <div className="composer-footer">
         <span>
           Shift + Enter for new line
