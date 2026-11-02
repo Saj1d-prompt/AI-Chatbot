@@ -1,8 +1,14 @@
-
 import apiClient from "./apiClient";
+
+/*
+|--------------------------------------------------------------------------
+| Conversations
+|--------------------------------------------------------------------------
+*/
 
 export async function getConversations() {
   const response = await apiClient.get("/conversations");
+
   return response.data;
 }
 
@@ -105,7 +111,7 @@ export async function updateConversationKnowledgeBases(
 
 /*
 |--------------------------------------------------------------------------
-| Conversation Attachments
+| Chat Attachments
 |--------------------------------------------------------------------------
 */
 
@@ -134,7 +140,7 @@ export async function uploadConversationAttachment(
 }
 
 /**
- * Fetch the current attachment list and processing statuses.
+ * Retrieve attachments and processing statuses.
  */
 export async function getConversationAttachments(
   conversationId
@@ -148,8 +154,6 @@ export async function getConversationAttachments(
 
 /**
  * Retry processing an existing failed attachment.
- *
- * Reuses the original document record and stored file.
  */
 export async function retryConversationAttachment(
   conversationId,
@@ -157,6 +161,24 @@ export async function retryConversationAttachment(
 ) {
   const response = await apiClient.post(
     `/conversations/${conversationId}/attachments/${documentId}/retry`
+  );
+
+  return response.data;
+}
+
+/**
+ * Permanently remove a conversation attachment.
+ *
+ * The Laravel endpoint handles removal of the
+ * database record, document chunks, source records,
+ * and stored physical file.
+ */
+export async function deleteConversationAttachment(
+  conversationId,
+  documentId
+) {
+  const response = await apiClient.delete(
+    `/conversations/${conversationId}/attachments/${documentId}`
   );
 
   return response.data;
