@@ -1,8 +1,13 @@
+
+/*
+|--------------------------------------------------------------------------
+| Composer Wrapper
+|--------------------------------------------------------------------------
+*/
+
 .composer-wrapper {
   width: 100%;
-
   padding: 0 24px 18px;
-
   flex-shrink: 0;
 
   background:
@@ -13,11 +18,15 @@
     );
 }
 
+/*
+|--------------------------------------------------------------------------
+| Message Composer
+|--------------------------------------------------------------------------
+*/
+
 .message-composer {
   width: min(780px, 100%);
-
   margin: 0 auto;
-
   padding: 9px;
 
   border: 1px solid #2b3036;
@@ -44,6 +53,12 @@
     0 0 0 3px rgba(113, 255, 181, 0.025);
 }
 
+/*
+|--------------------------------------------------------------------------
+| Message Textarea
+|--------------------------------------------------------------------------
+*/
+
 .message-composer textarea {
   display: block;
 
@@ -57,20 +72,32 @@
 
   border: 0;
   outline: none;
-  overflow-y:hidden;
+
+  overflow-y: hidden;
+
   background: transparent;
 
   color: var(--text-primary);
 
   font-family: inherit;
   font-size: 14px;
-
   line-height: 1.55;
 }
 
 .message-composer textarea::placeholder {
   color: #666d75;
 }
+
+.message-composer textarea:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Toolbar
+|--------------------------------------------------------------------------
+*/
 
 .composer-toolbar {
   display: flex;
@@ -83,7 +110,6 @@
 .composer-tools {
   display: flex;
   align-items: center;
-
   gap: 3px;
 }
 
@@ -101,14 +127,26 @@
   border-radius: 9px;
 
   background: transparent;
-
   color: #717880;
+
+  cursor: pointer;
 }
 
-.composer-tool-button:hover {
+.composer-tool-button:not(:disabled):hover {
   background: var(--surface-hover);
   color: #aeb4bb;
 }
+
+.composer-tool-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Send Button
+|--------------------------------------------------------------------------
+*/
 
 .composer-send-button {
   display: flex;
@@ -124,8 +162,9 @@
   border-radius: 10px;
 
   background: var(--signal);
-
   color: #07110d;
+
+  cursor: pointer;
 
   transition:
     opacity 150ms ease,
@@ -136,16 +175,21 @@
 .composer-send-button:not(:disabled):hover {
   transform: translateY(-1px);
 
-  box-shadow: 0 5px 20px rgba(113, 255, 181, 0.16);
+  box-shadow:
+    0 5px 20px rgba(113, 255, 181, 0.16);
 }
 
 .composer-send-button:disabled {
   background: #252a2f;
-
   color: #626970;
-
   cursor: default;
 }
+
+/*
+|--------------------------------------------------------------------------
+| Footer
+|--------------------------------------------------------------------------
+*/
 
 .composer-footer {
   display: flex;
@@ -159,7 +203,6 @@
   color: #535960;
 
   font-size: 9px;
-
   text-align: center;
 }
 
@@ -167,49 +210,9 @@
   opacity: 0.55;
 }
 
-@media (max-width: 520px) {
-  .composer-footer > span:first-child,
-  .composer-footer-separator {
-    display: none;
-  }
-}
-
-@media (max-width: 640px) {
-  .composer-wrapper {
-    padding: 0 12px 11px;
-  }
-
-  .message-composer {
-    border-radius: 15px;
-  }
-}
-
-.message-composer textarea:disabled {
-  opacity: 0.75;
-
-  cursor: default;
-}
-
-.composer-tool-button:disabled {
-  opacity: 0.4;
-
-  cursor: default;
-}
-
-.send-loader {
-  animation: sendLoaderSpin 800ms linear infinite;
-}
-
-@keyframes sendLoaderSpin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-
 /*
 |--------------------------------------------------------------------------
-| Conversation Attachments
+| Hidden File Input
 |--------------------------------------------------------------------------
 */
 
@@ -217,13 +220,20 @@
   display: none;
 }
 
+/*
+|--------------------------------------------------------------------------
+| Chat Attachments
+|--------------------------------------------------------------------------
+*/
+
 .composer-attachments {
   width: min(780px, 100%);
+
   margin: 0 auto 10px;
-  padding: 11px 12px;
+  padding: 12px;
 
   border: 1px solid #2b3036;
-  border-radius: 13px;
+  border-radius: 12px;
 
   background: #14171b;
 }
@@ -233,9 +243,11 @@
   align-items: center;
   justify-content: space-between;
 
-  margin-bottom: 8px;
+  gap: 12px;
 
-  color: #aeb4bb;
+  margin-bottom: 10px;
+
+  color: #aeb6bf;
   font-size: 11px;
   font-weight: 600;
 }
@@ -245,21 +257,29 @@
   align-items: center;
   justify-content: center;
 
-  width: 25px;
-  height: 25px;
+  width: 26px;
+  height: 26px;
 
-  border: 0;
+  padding: 0;
+
+  flex-shrink: 0;
+
+  border: 1px solid transparent;
   border-radius: 6px;
 
   background: transparent;
-  color: #89939c;
+  color: #818a94;
 
   cursor: pointer;
+
+  transition:
+    background 150ms ease,
+    color 150ms ease;
 }
 
-.composer-attachment-refresh:hover {
-  background: #252a2f;
-  color: #d1d5db;
+.composer-attachment-refresh:not(:disabled):hover {
+  background: #252b31;
+  color: #e5e7eb;
 }
 
 .composer-attachment-refresh:disabled {
@@ -267,28 +287,43 @@
   cursor: default;
 }
 
+/*
+|--------------------------------------------------------------------------
+| Attachment List
+|--------------------------------------------------------------------------
+*/
+
 .composer-attachment-list {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 6px;
 
-  max-height: 145px;
+  max-height: 210px;
   overflow-y: auto;
 }
 
 .composer-attachment-item {
   display: flex;
   align-items: center;
-  gap: 8px;
 
+  gap: 9px;
+
+  width: 100%;
   min-width: 0;
+
   padding: 9px 10px;
 
-  border: 1px solid #30363d;
+  border: 1px solid #2a3036;
   border-radius: 9px;
 
-  background: #1c2025;
-  color: #a9b1ba;
+  background: #1b1f24;
+
+  color: #aeb6bf;
+}
+
+.composer-attachment-file-icon {
+  flex-shrink: 0;
+  color: #87919b;
 }
 
 .composer-attachment-name {
@@ -299,93 +334,64 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 
+  color: #e0e5e9;
+
   font-size: 12px;
+  font-weight: 500;
 }
+
+/*
+|--------------------------------------------------------------------------
+| Attachment Status
+|--------------------------------------------------------------------------
+*/
 
 .composer-attachment-status {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+
   gap: 5px;
+
+  padding: 4px 7px;
 
   flex-shrink: 0;
 
+  border: 1px solid transparent;
+  border-radius: 6px;
+
   font-size: 10px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
-.composer-attachment-uploaded,
+.composer-attachment-uploaded {
+  color: #f6c56c;
+  background: rgba(246, 197, 108, 0.08);
+  border-color: rgba(246, 197, 108, 0.14);
+}
+
 .composer-attachment-processing {
-  color: #e9c46a;
+  color: #7ebcff;
+  background: rgba(126, 188, 255, 0.08);
+  border-color: rgba(126, 188, 255, 0.14);
 }
 
 .composer-attachment-ready {
   color: #71ffb5;
+  background: rgba(113, 255, 181, 0.08);
+  border-color: rgba(113, 255, 181, 0.14);
 }
 
 .composer-attachment-failed {
-  color: #ff8585;
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.08);
+  border-color: rgba(248, 113, 113, 0.14);
 }
-
-.composer-attachment-notice,
-.composer-attachment-error {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  width: min(780px, 100%);
-
-  margin: 0 auto 9px;
-  padding: 9px 12px;
-
-  border-radius: 9px;
-
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.composer-attachment-notice {
-  background: rgba(113, 255, 181, 0.07);
-  color: #a4e9c4;
-}
-
-.composer-attachment-error {
-  border: 1px solid rgba(255, 133, 133, 0.18);
-  background: rgba(255, 133, 133, 0.06);
-  color: #ff9a9a;
-}
-
-.composer-attachment-warning {
-  margin: 9px 0 0;
-
-  color: #ffad85;
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.composer-icon-spin {
-  animation: composerAttachmentSpin 800ms linear infinite;
-}
-
-@keyframes composerAttachmentSpin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (max-width: 640px) {
-  .composer-attachments {
-    border-radius: 11px;
-  }
-
-  .composer-attachment-item {
-    padding: 8px;
-  }
-}
-
 
 /*
 |--------------------------------------------------------------------------
-| Attachment Retry Button — Step 5.7.2
+| Attachment Retry Button
 |--------------------------------------------------------------------------
 */
 
@@ -393,11 +399,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+
   gap: 5px;
 
-  flex-shrink: 0;
-
   padding: 6px 9px;
+
+  flex-shrink: 0;
 
   border: 1px solid #3a4148;
   border-radius: 7px;
@@ -419,7 +426,10 @@
 
 .composer-attachment-retry:not(:disabled):hover {
   border-color: #71ffb5;
-  background: rgba(113, 255, 181, 0.08);
+
+  background:
+    rgba(113, 255, 181, 0.08);
+
   color: #71ffb5;
 }
 
@@ -428,12 +438,188 @@
   cursor: not-allowed;
 }
 
+/*
+|--------------------------------------------------------------------------
+| Attachment Remove Button
+|--------------------------------------------------------------------------
+*/
+
+.composer-attachment-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 28px;
+  height: 28px;
+
+  padding: 0;
+
+  flex-shrink: 0;
+
+  border: 1px solid transparent;
+  border-radius: 7px;
+
+  background: transparent;
+  color: #9ca3af;
+
+  font-family: inherit;
+
+  cursor: pointer;
+
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.composer-attachment-delete:not(:disabled):hover {
+  background: rgba(239, 68, 68, 0.1);
+
+  border-color:
+    rgba(239, 68, 68, 0.25);
+
+  color: #f87171;
+}
+
+.composer-attachment-delete:focus-visible,
+.composer-attachment-retry:focus-visible,
+.composer-attachment-refresh:focus-visible {
+  outline: 2px solid var(--signal, #71ffb5);
+  outline-offset: 2px;
+}
+
+.composer-attachment-delete:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Attachment Notices
+|--------------------------------------------------------------------------
+*/
+
+.composer-attachment-notice,
+.composer-attachment-error {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  width: min(780px, 100%);
+
+  margin: 0 auto 10px;
+  padding: 9px 12px;
+
+  border: 1px solid transparent;
+  border-radius: 9px;
+
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.composer-attachment-notice {
+  color: #9be9bf;
+
+  background:
+    rgba(113, 255, 181, 0.055);
+
+  border-color:
+    rgba(113, 255, 181, 0.12);
+}
+
+.composer-attachment-error {
+  color: #ffaaaa;
+
+  background:
+    rgba(248, 113, 113, 0.07);
+
+  border-color:
+    rgba(248, 113, 113, 0.18);
+}
+
+.composer-attachment-error svg,
+.composer-attachment-notice svg {
+  flex-shrink: 0;
+}
+
+.composer-attachment-warning {
+  margin: 9px 2px 0;
+
+  color: #d7aa78;
+
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Loading Animations
+|--------------------------------------------------------------------------
+*/
+
+.composer-icon-spin,
+.send-loader {
+  animation:
+    sendLoaderSpin 800ms linear infinite;
+}
+
+@keyframes sendLoaderSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Responsive
+|--------------------------------------------------------------------------
+*/
+
+@media (max-width: 640px) {
+  .composer-wrapper {
+    padding: 0 12px 11px;
+  }
+
+  .message-composer {
+    border-radius: 15px;
+  }
+
+  .composer-attachments {
+    padding: 10px;
+  }
+
+  .composer-attachment-item {
+    gap: 6px;
+    padding: 8px;
+  }
+}
+
 @media (max-width: 520px) {
+  .composer-footer > span:first-child,
+  .composer-footer-separator {
+    display: none;
+  }
+
   .composer-attachment-retry {
     padding: 6px;
   }
 
   .composer-attachment-retry span {
     display: none;
+  }
+
+  .composer-attachment-delete {
+    width: 28px;
+    height: 28px;
+  }
+
+  .composer-attachment-name {
+    font-size: 11px;
+  }
+
+  .composer-attachment-status {
+    font-size: 9px;
+    padding: 4px 5px;
   }
 }
