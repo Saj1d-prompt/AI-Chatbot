@@ -63,10 +63,6 @@ class ConversationAttachmentDeleteController extends Controller
                 );
             }
 
-            /*
-             * Save the physical path before
-             * deleting the database record.
-             */
             $filePath = $attachment->file_path;
 
             $attachment->delete();
